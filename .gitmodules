@@ -1,0 +1,3 @@
+[submodule "domain-discovery-d4"]
+	path = domain-discovery-d4
+	url = git@github.com:VIDA-NYU/domain-discovery-d4.git
