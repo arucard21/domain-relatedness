@@ -3,3 +3,9 @@
 
 # Ignore Gradle build output directory
 build
+
+# IDE-related files
+.classpath
+.project
+.settings/
+bin/
