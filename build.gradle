@@ -27,5 +27,9 @@ testing {
 
 application {
     // Define the main class for the application.
-    mainClass = 'domain.relatedness.App'
+    mainClass = 'domain.relatedness.DomainRelatedness'
+}
+
+tasks.withType(JavaExec) {
+    jvmArgs = ['-Xms2g', '-Xmx10g']
 }
