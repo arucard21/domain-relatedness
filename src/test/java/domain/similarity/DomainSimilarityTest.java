@@ -1,8 +1,8 @@
-package domain.relatedness;
+package domain.similarity;
 
 import org.junit.jupiter.api.Test;
 
-class DomainRelatednessTest {
+class DomainSimilarityTest {
     @Test
     public void test() {
         // TODO

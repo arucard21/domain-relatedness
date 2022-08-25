@@ -1,11 +1,11 @@
-package domain.relatedness;
+package domain.similarity;
 
-public class RelatednessResult {
+public class MatchingResult {
 	private long matched;
 	private long domainRepresentationSize;
 	private long datasetSize;
 
-	public RelatednessResult(long matched, long domainRepresentationSize, long datasetSize) {
+	public MatchingResult(long matched, long domainRepresentationSize, long datasetSize) {
 		this.matched = matched;
 		this.domainRepresentationSize = domainRepresentationSize;
 		this.datasetSize = datasetSize;

@@ -1,4 +1,4 @@
-package domain.relatedness;
+package domain.similarity;
 
 public class ExportedColumn {
 	private int id;

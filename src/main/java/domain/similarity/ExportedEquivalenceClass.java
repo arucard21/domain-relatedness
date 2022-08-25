@@ -1,4 +1,4 @@
-package domain.relatedness;
+package domain.similarity;
 
 import java.util.List;
 

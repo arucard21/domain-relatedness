@@ -27,9 +27,9 @@ testing {
 
 application {
     // Define the main class for the application.
-    mainClass = 'domain.relatedness.DomainRelatedness'
+    mainClass = 'domain.similarity.DomainSimilarity'
 }
 
 tasks.withType(JavaExec) {
-    jvmArgs = ['-Xms2g', '-Xmx10g']
+    jvmArgs = ['-Xms2g', '-Xmx12g']
 }

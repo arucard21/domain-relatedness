@@ -1,10 +1,10 @@
-package domain.relatedness;
+package domain.similarity;
 
 import java.util.List;
 
-public class ExportedStrongDomain {
+public class ColumnDomain {
 	private List<ExportedColumn> columns;
-	private List<List<ExportedEquivalenceClass>> terms;
+	private List<String> terms;
 
 	public List<ExportedColumn> getColumns() {
 		return columns;
@@ -12,10 +12,10 @@ public class ExportedStrongDomain {
 	public void setColumns(List<ExportedColumn> columns) {
 		this.columns = columns;
 	}
-	public List<List<ExportedEquivalenceClass>> getTerms() {
+	public List<String> getTerms() {
 		return terms;
 	}
-	public void setTerms(List<List<ExportedEquivalenceClass>> terms) {
+	public void setTerms(List<String> terms) {
 		this.terms = terms;
 	}
 }
