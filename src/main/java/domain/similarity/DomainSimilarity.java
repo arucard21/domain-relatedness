@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.Reader;
 import java.io.Writer;
 import java.math.BigDecimal;
@@ -16,8 +17,10 @@ import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -58,8 +61,22 @@ public class DomainSimilarity {
 	public static final Path TASK_DURATIONS_FILE = Paths.get("task_durations.csv");
 	public static final OpenOption[] createAndAppend = new OpenOption[]{StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.APPEND};
 	public static final Logger LOGGER = Logger.getLogger(D4.class.getName());
+	public static final List<String> TARGET_DATASETS = List.of(
+			"imdb",
+			"tmdb",
+			"rt",
+			"indian",
+			"movies",
+			"netflix",
+			"tmdb-350k",
+			"steam",
+			"datasets.data-cityofnewyork-us.education",
+			"datasets.data-cityofnewyork-us.finance",
+			"datasets.data-cityofnewyork-us.services");
 
 	public static void main(String[] args) throws IOException {
+		copyManualDomainRepresentation();
+
     	generateDomainRepresentation(DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED, 	JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	false);
     	generateDomainRepresentation(DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED_TF, 	TERM_FREQUENCY_BASED_JACCARD, 	ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	false);
 
@@ -72,18 +89,22 @@ public class DomainSimilarity {
     	generateDomainRepresentation(DOMAIN_REPRESENTATION_ALL_TERMS, 				JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	true);
     	generateDomainRepresentation(DOMAIN_REPRESENTATION_ALL_TERMS_TF, 			TERM_FREQUENCY_BASED_JACCARD, 	ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	true);
 
-    	calculateSimilarityToTargetDataset("imdb");
-    	calculateSimilarityToTargetDataset("tmdb");
-    	calculateSimilarityToTargetDataset("rt");
-    	calculateSimilarityToTargetDataset("indian");
-    	calculateSimilarityToTargetDataset("movies");
-    	calculateSimilarityToTargetDataset("netflix");
-    	calculateSimilarityToTargetDataset("tmdb-350k");
-    	calculateSimilarityToTargetDataset("steam");
-    	calculateSimilarityToTargetDataset("datasets.data-cityofnewyork-us.education");
-    	calculateSimilarityToTargetDataset("datasets.data-cityofnewyork-us.finance");
-    	calculateSimilarityToTargetDataset("datasets.data-cityofnewyork-us.services");
+    	for(String targetDataset: TARGET_DATASETS) {
+    		calculateSimilarityToTargetDataset(targetDataset);
+    	}
+    	calculateOverlapCoefficientOfTargetDatasets();
     }
+
+	private static void copyManualDomainRepresentation() throws IOException {
+		String movieTitlesColumnDomain = "dataset-domain/1.json";
+		Path source = Paths.get(DOMAIN_REPRESENTATION_MANUAL, movieTitlesColumnDomain);
+		Path target = Paths.get(DOMAIN_REPRESENTATION_OUTPUT_PATH, DOMAIN_REPRESENTATION_MANUAL, movieTitlesColumnDomain);
+		if(target.toFile().exists()) {
+			return;
+		}
+		target.toFile().getParentFile().mkdirs();
+		Files.copy(source, target);
+	}
 
 	private static void generateDomainRepresentation(String outputFolder, String simAlgo, String robustifier, String trimmer, boolean noExpand, boolean allTerms) throws IOException {
 		generateColumnDomains(outputFolder, simAlgo, robustifier, trimmer, noExpand);
@@ -233,6 +254,61 @@ public class DomainSimilarity {
 			throw new IllegalStateException(error);
 		}
 		File termIndexFile = new File(outputPath, "term-index.txt.gz");
+		Set<String> datasetTerms = readTermsFromIndexFile(termIndexFile);
+		Set<String> matchedDatasetTerms = datasetTerms.stream()
+				.filter(datasetTerm -> datasetDomainTerms.contains(datasetTerm))
+				.collect(Collectors.toSet());
+
+		try(OutputStream out = Files.newOutputStream(new File(outputPath, "matched-terms-"+domainRepresentationPath.getName()+".txt").toPath(), createAndAppend)){
+			for(String matchedTerm: datasetTerms) {
+				out.write((matchedTerm + "\n").getBytes(StandardCharsets.UTF_8));
+			}
+		}
+		return new MatchingResult(matchedDatasetTerms.size(), datasetDomainTerms.size(), datasetTerms.size());
+	}
+
+	private static void calculateOverlapCoefficientOfTargetDatasets() throws IOException {
+		File datasetsDirectOverlapCoefficientCsv = new File("datasets_direct_overlap_coefficient.csv");
+		if(datasetsDirectOverlapCoefficientCsv.exists()) {
+			System.out.println(datasetsDirectOverlapCoefficientCsv.getName() +" already exists. Skipping this step.");
+			return;
+		}
+		else {
+			Files.writeString(datasetsDirectOverlapCoefficientCsv.toPath(), ","+String.join(",", TARGET_DATASETS)+"\n", createAndAppend);
+		}
+		Map<String, Set<String>> termsPerDataset = new HashMap<>();
+		for(int i = 0; i < TARGET_DATASETS.size(); i++) {
+			String targetDataset = TARGET_DATASETS.get(i);
+			ZonedDateTime start = ZonedDateTime.now();
+			File outputPath = createOutputPath(DOMAIN_SIMILARITY_OUTPUT_PATH, targetDataset);
+			File termIndexFile = new File(outputPath, "term-index.txt.gz");
+			if(!termsPerDataset.containsKey(targetDataset)) {
+				termsPerDataset.put(targetDataset, readTermsFromIndexFile(termIndexFile));
+			}
+			Files.writeString(datasetsDirectOverlapCoefficientCsv.toPath(), targetDataset, createAndAppend);
+			for(int j = 0; j < TARGET_DATASETS.size(); j++) {
+				if(j < i+1) {
+					Files.writeString(datasetsDirectOverlapCoefficientCsv.toPath(), ",", createAndAppend);
+					continue;
+				}
+				String comparisonDataset = TARGET_DATASETS.get(j);
+				File comparisonOutputPath = createOutputPath(DOMAIN_SIMILARITY_OUTPUT_PATH, comparisonDataset);
+				File comparisonTermIndexFile = new File(comparisonOutputPath, "term-index.txt.gz");
+				if(!termsPerDataset.containsKey(comparisonDataset)) {
+					termsPerDataset.put(comparisonDataset, readTermsFromIndexFile(comparisonTermIndexFile));
+				}
+				Set<String> matchedDatasetTerms = termsPerDataset.get(comparisonDataset).stream()
+						.filter(datasetTerm -> termsPerDataset.get(targetDataset).contains(datasetTerm))
+						.collect(Collectors.toSet());
+				double overlapCoefficient = (matchedDatasetTerms.size() * 1d) / (Math.min(termsPerDataset.get(targetDataset).size(), termsPerDataset.get(comparisonDataset).size()));
+				Files.writeString(datasetsDirectOverlapCoefficientCsv.toPath(), ","+Double.toString(overlapCoefficient), createAndAppend);
+			}
+			Files.writeString(datasetsDirectOverlapCoefficientCsv.toPath(), "\n", createAndAppend);
+			logDuration(start, "calculating direct overlap coefficient for dataset: " + targetDataset);
+		}
+	}
+
+	private static Set<String> readTermsFromIndexFile(File termIndexFile) throws IOException{
 		Set<String> datasetTerms = new HashSet<>();
 		TermConsumer consumer = new TermConsumer() {
 			@Override
@@ -247,17 +323,7 @@ public class DomainSimilarity {
 			public void close() {}
 		};
 		new TermIndexReader(termIndexFile).read(consumer);
-
-		Set<String> matchedDatasetTerms = datasetTerms.stream()
-				.filter(datasetTerm -> datasetDomainTerms.contains(datasetTerm))
-				.collect(Collectors.toSet());
-
-		Files.writeString(
-				new File(outputPath, "matched-terms.txt").toPath(),
-				String.join("\n", matchedDatasetTerms),
-				createAndAppend);
-
-		return new MatchingResult(matchedDatasetTerms.size(), datasetDomainTerms.size(), datasetTerms.size());
+		return datasetTerms;
 	}
 
 	private static File createOutputPath(String outputParent, String outputFolder) {
