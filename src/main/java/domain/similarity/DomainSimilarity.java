@@ -3,16 +3,18 @@ package domain.similarity;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.time.Duration;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -20,7 +22,6 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonIOException;
@@ -38,29 +39,38 @@ public class DomainSimilarity {
 	public static final String DOMAIN_REPRESENTATION_INPUT_DATA = "domain-data";
 	public static final String DOMAIN_REPRESENTATION_OUTPUT_PATH = "output/domain-representation";
 	public static final String DOMAIN_SIMILARITY_OUTPUT_PATH = "output/domain-similarity";
-	public static final String DOMAIN_REPRESENTATION_DEFAULT = "default";
-	public static final String DOMAIN_REPRESENTATION_DEFAULT_TF = "default-tf";
-	public static final String DOMAIN_REPRESENTATION_NO_INDEX = "no-index";
-	public static final String DOMAIN_REPRESENTATION_NO_INDEX_TF = "no-index-tf";
+	public static final String DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED = "precision";
+	public static final String DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED_TF = "precision-tf";
+	public static final String DOMAIN_REPRESENTATION_RECALL_OPTIMIZED = "recall";
+	public static final String DOMAIN_REPRESENTATION_RECALL_OPTIMIZED_TF = "recall-tf";
+	public static final String DOMAIN_REPRESENTATION_ALL_TERMS = "all-terms";
+	public static final String DOMAIN_REPRESENTATION_ALL_TERMS_TF = "all-terms-tf";
 	public static final String DOMAIN_REPRESENTATION_NO_EXPAND = "no-expand";
 	public static final String DOMAIN_REPRESENTATION_NO_EXPAND_TF = "no-expand-tf";
-	public static final String DOMAIN_REPRESENTATION_NO_INDEX_NO_EXPAND = "no-index-no-expand";
-	public static final String DOMAIN_REPRESENTATION_NO_INDEX_NO_EXPAND_TF = "no-index-no-expand-tf";
 	public static final String DOMAIN_REPRESENTATION_MANUAL = "manual";
 	public static final String DATASET_DOMAIN_FOLDER = "dataset-domain";
 	public static final String JACCARD_INDEX = D4Config.EQSIM_JI;
 	public static final String TERM_FREQUENCY_BASED_JACCARD = D4Config.EQSIM_TFICF;
-	private static final Logger LOGGER = Logger.getLogger(D4.class.getName());
+	public static final String ROBUSTIFIER_LIBERAL = D4Config.ROBUST_LIBERAL;
+	public static final String ROBUSTIFIER_IGNORE_LAST = D4Config.ROBUST_IGNORELAST;
+	public static final String TRIMMER_CONSERVATIVE = D4Config.TRIMMER_CONSERVATIVE;
+	public static final String TRIMMER_LIBERAL = D4Config.TRIMMER_LIBERAL;
+	public static final Path TASK_DURATIONS_FILE = Paths.get("task_durations.csv");
+	public static final OpenOption[] createAndAppend = new OpenOption[]{StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.APPEND};
+	public static final Logger LOGGER = Logger.getLogger(D4.class.getName());
 
 	public static void main(String[] args) throws IOException {
-    	generateDomainRepresentation(DOMAIN_REPRESENTATION_DEFAULT, JACCARD_INDEX, false, false);
-    	generateDomainRepresentation(DOMAIN_REPRESENTATION_DEFAULT_TF, TERM_FREQUENCY_BASED_JACCARD, false, false);
-    	generateDomainRepresentation(DOMAIN_REPRESENTATION_NO_INDEX, JACCARD_INDEX, true, false);
-    	generateDomainRepresentation(DOMAIN_REPRESENTATION_NO_INDEX_TF, TERM_FREQUENCY_BASED_JACCARD, true, false);
-    	generateDomainRepresentation(DOMAIN_REPRESENTATION_NO_EXPAND, JACCARD_INDEX, false, true);
-    	generateDomainRepresentation(DOMAIN_REPRESENTATION_NO_EXPAND_TF, TERM_FREQUENCY_BASED_JACCARD, false, true);
-    	generateDomainRepresentation(DOMAIN_REPRESENTATION_NO_INDEX_NO_EXPAND, JACCARD_INDEX, true, true);
-    	generateDomainRepresentation(DOMAIN_REPRESENTATION_NO_INDEX_NO_EXPAND_TF, TERM_FREQUENCY_BASED_JACCARD, true, true);
+    	generateDomainRepresentation(DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED, 	JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	false);
+    	generateDomainRepresentation(DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED_TF, 	TERM_FREQUENCY_BASED_JACCARD, 	ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	false);
+
+    	generateDomainRepresentation(DOMAIN_REPRESENTATION_RECALL_OPTIMIZED, 		JACCARD_INDEX, 					ROBUSTIFIER_IGNORE_LAST, 	TRIMMER_LIBERAL, 		false, 	false);
+    	generateDomainRepresentation(DOMAIN_REPRESENTATION_RECALL_OPTIMIZED_TF, 	TERM_FREQUENCY_BASED_JACCARD, 	ROBUSTIFIER_IGNORE_LAST, 	TRIMMER_LIBERAL, 		false, 	false);
+
+    	generateDomainRepresentation(DOMAIN_REPRESENTATION_NO_EXPAND, 				JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	true, 	false);
+    	generateDomainRepresentation(DOMAIN_REPRESENTATION_NO_EXPAND_TF, 			TERM_FREQUENCY_BASED_JACCARD, 	ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	true, 	false);
+
+    	generateDomainRepresentation(DOMAIN_REPRESENTATION_ALL_TERMS, 				JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	true);
+    	generateDomainRepresentation(DOMAIN_REPRESENTATION_ALL_TERMS_TF, 			TERM_FREQUENCY_BASED_JACCARD, 	ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	true);
 
     	calculateSimilarityToTargetDataset("imdb");
     	calculateSimilarityToTargetDataset("tmdb");
@@ -75,29 +85,32 @@ public class DomainSimilarity {
     	calculateSimilarityToTargetDataset("datasets.data-cityofnewyork-us.services");
     }
 
-	private static void generateDomainRepresentation(String outputFolder, String simAlgo, boolean deleteIndex, boolean noExpand) throws IOException {
-		generateColumnDomains(outputFolder, simAlgo, deleteIndex, noExpand);
-		generateDatasetDomain(outputFolder);
+	private static void generateDomainRepresentation(String outputFolder, String simAlgo, String robustifier, String trimmer, boolean noExpand, boolean allTerms) throws IOException {
+		generateColumnDomains(outputFolder, simAlgo, robustifier, trimmer, noExpand);
+		generateDatasetDomain(outputFolder, allTerms);
 	}
 
-	private static void generateColumnDomains(String outputFolder, String simAlgo, boolean deleteIndex, boolean noExpand) {
+	private static void generateColumnDomains(String outputFolder, String simAlgo, String robustifier, String trimmer, boolean noExpand) throws IOException {
+		ZonedDateTime start = ZonedDateTime.now();
 		File outputPath = createOutputPath(DOMAIN_REPRESENTATION_OUTPUT_PATH, outputFolder);
-		generateColumnFiles(DOMAIN_REPRESENTATION_INPUT_DATA, outputPath, deleteIndex, false);
+		generateColumnFiles(DOMAIN_REPRESENTATION_INPUT_DATA, outputPath);
 		generateTermIndex(outputPath);
 		generateEquivalenceClasses(outputPath);
-		computeSignatures(outputPath, simAlgo);
+		computeSignatures(outputPath, simAlgo, robustifier);
 		if(noExpand) {
 			noExpandColumns(outputPath);
 		}
 		else {
-			expandColumns(outputPath);
+			expandColumns(outputPath, trimmer);
 		}
 		discoverLocalDomains(outputPath);
-		pruneStrongDomains(outputPath);
+		pruneToStrongDomains(outputPath);
 		exportStrongDomains(outputPath);
+		logDuration(start, "generating column domain");
 	}
 
-	private static void generateDatasetDomain(String outputFolder) throws IOException {
+	private static void generateDatasetDomain(String outputFolder, boolean allTerms) throws IOException {
+		ZonedDateTime start = ZonedDateTime.now();
 		// read exported JSON and output new JSON that only keeps the first block
 		File outputPath = createOutputPath(DOMAIN_REPRESENTATION_OUTPUT_PATH, outputFolder);
 		File datasetDomainPath = new File(outputPath, DATASET_DOMAIN_FOLDER);
@@ -118,9 +131,17 @@ public class DomainSimilarity {
 	    				.fromJson(reader, ExportedStrongDomain.class);
 		    	ColumnDomain columnDomain = new ColumnDomain();
 		    	columnDomain.setColumns(strongDomain.getColumns());
-		    	columnDomain.setTerms(strongDomain.getTerms().get(0).stream()
-		    			.flatMap(eq -> eq.getTerms().stream())
-		    			.collect(Collectors.toList()));
+		    	if(allTerms) {
+		    		columnDomain.setTerms(strongDomain.getTerms().stream()
+		    				.flatMap(termsBlock -> termsBlock.stream())
+			    			.flatMap(eq -> eq.getTerms().stream())
+			    			.collect(Collectors.toList()));
+		    	}
+		    	else {
+		    		columnDomain.setTerms(strongDomain.getTerms().get(0).stream()
+			    			.flatMap(eq -> eq.getTerms().stream())
+			    			.collect(Collectors.toList()));
+		    	}
 		    	File columnDomainFile = new File(datasetDomainPath, strongDomainFile.getName());
 		    	try(Writer writer = new FileWriter(columnDomainFile, StandardCharsets.UTF_8)){
 			    	new GsonBuilder()
@@ -130,28 +151,32 @@ public class DomainSimilarity {
 		    	}
 	    	}
 		}
+		logDuration(start, "generating dataset domain");
 	}
 
 	private static void calculateSimilarityToTargetDataset(String datasetFolderName) throws IOException {
 		generateTargetDatasetTermIndex(datasetFolderName);
-		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_DEFAULT);
-		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_DEFAULT_TF);
-		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_NO_INDEX);
-		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_NO_INDEX_TF);
+		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED);
+		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED_TF);
+		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_RECALL_OPTIMIZED);
+		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_RECALL_OPTIMIZED_TF);
 		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_NO_EXPAND);
 		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_NO_EXPAND_TF);
-		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_NO_INDEX_NO_EXPAND);
-		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_NO_INDEX_NO_EXPAND_TF);
+		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_ALL_TERMS);
+		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_ALL_TERMS_TF);
 		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_MANUAL);
 	}
 
-	private static void generateTargetDatasetTermIndex(String datasetFolderName) {
+	private static void generateTargetDatasetTermIndex(String datasetFolderName) throws IOException {
+		ZonedDateTime start = ZonedDateTime.now();
 		File outputPath = createOutputPath(DOMAIN_SIMILARITY_OUTPUT_PATH, datasetFolderName);
-		generateColumnFiles(datasetFolderName, outputPath, false, false);
+		generateColumnFiles(datasetFolderName, outputPath);
 		generateTermIndex(outputPath);
+		logDuration(start, "generating term index for " + datasetFolderName);
 	}
 
 	private static void calculateSimilarityToTargetDatasetForDomainRepresentation(String datasetFolderName, String domainRepresentationFolderName) throws IOException {
+		ZonedDateTime start = ZonedDateTime.now();
 		File outputPath = createOutputPath(DOMAIN_SIMILARITY_OUTPUT_PATH, datasetFolderName);
 		Path matchingResultFile = Paths.get(outputPath.getPath(), String.format("matching_result_%s_%s.txt", datasetFolderName, domainRepresentationFolderName));
 		Path matchingResultCsv = Paths.get(outputPath.getPath(), String.format("%s.csv", datasetFolderName));
@@ -169,9 +194,9 @@ public class DomainSimilarity {
 					matchingResult.getDatasetSize(),
 					matchingResult.getDomainRepresentationSize());
 			System.out.print(matchingResultMessage);
-			Files.writeString(matchingResultFile, matchingResultMessage, StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+			Files.writeString(matchingResultFile, matchingResultMessage, createAndAppend);
 			if(!matchingResultCsv.toFile().exists()) {
-				Files.writeString(matchingResultCsv, "domain_representation_type,domain_representation_size,dataset_size,matched,overlap_coefficient\n", StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+				Files.writeString(matchingResultCsv, "domain_representation_type,domain_representation_size,dataset_size,matched,overlap_coefficient\n", createAndAppend);
 			}
 			double overlapCoefficient = (matchingResult.getMatched() * 1d) / (Math.min(matchingResult.getDatasetSize(), matchingResult.getDomainRepresentationSize()));
 			String csvOutput = String.format(
@@ -181,11 +206,12 @@ public class DomainSimilarity {
 					matchingResult.getDatasetSize(),
 					matchingResult.getMatched(),
 					overlapCoefficient);
-			Files.writeString(matchingResultCsv, csvOutput, StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+			Files.writeString(matchingResultCsv, csvOutput, createAndAppend);
 		}
 		else {
 			System.out.println(matchingResultFile.toFile().getName() +" already exists. Skipping this step.");
 		}
+		logDuration(start, "calculating similarity score for " + datasetFolderName + " using the " + domainRepresentationFolderName + " domain representation");
 	}
 
 	private static MatchingResult calculateTargetDatasetMatchedTerms(String datasetFolderName, File domainRepresentationPath) throws JsonSyntaxException, JsonIOException, IOException {
@@ -226,6 +252,11 @@ public class DomainSimilarity {
 				.filter(datasetTerm -> datasetDomainTerms.contains(datasetTerm))
 				.collect(Collectors.toSet());
 
+		Files.writeString(
+				new File(outputPath, "matched-terms.txt").toPath(),
+				String.join("\n", matchedDatasetTerms),
+				createAndAppend);
+
 		return new MatchingResult(matchedDatasetTerms.size(), datasetDomainTerms.size(), datasetTerms.size());
 	}
 
@@ -237,38 +268,14 @@ public class DomainSimilarity {
 		return outputPath;
 	}
 
-	private static void deleteIndexAndForeignKeyColumns(File columnsFolder) {
-		/*
-		 * Delete only the second "directors" file which should match the one containing
-		 * id's from IMDb. The first one should be from Rotten Tomatoes and should contain
-		 * the actual names of directors.
-		 */
-		File[] directorsColumnFiles = columnsFolder.listFiles(new FilenameFilter() {
-			@Override
-			public boolean accept(File dir, String name) {
-				return name.contains("directors");
-			}
-		});
-		if(!directorsColumnFiles[1].delete()) {
-			System.err.println("Could not delete column file: " + directorsColumnFiles[1].getName());
-		}
+	private static void logDuration(ZonedDateTime startTime, String taskDescription) throws IOException {
+		ZonedDateTime endTime = ZonedDateTime.now();
+		Duration duration = Duration.between(startTime, endTime);
+		Files.writeString(TASK_DURATIONS_FILE, duration.toString()+ ",\"" + taskDescription + "\"\n", createAndAppend);
 
-		List<String> indexAndForeignKeyColumns = List.of(
-				"titleId",
-				"tconst",
-				"nconst",
-				"parentTconst",
-				"knownForTitles",
-				"writers",
-				"credit_id",
-				"imdb_id",
-				"rotten_tomatoes_link");
-		Stream.of(columnsFolder.listFiles())
-		.filter(file -> indexAndForeignKeyColumns.stream().anyMatch(idx -> file.getName().contains(idx)))
-		.forEach(file -> file.delete());;
 	}
 
-	private static void generateColumnFiles(String dataFolder, File outputPath, boolean deleteIndex, boolean split) {
+	private static void generateColumnFiles(String dataFolder, File outputPath) {
 		// ----------------------------------------------------------------
 	    // GENERATE COLUMN FILES
 	    // ----------------------------------------------------------------
@@ -284,12 +291,9 @@ public class DomainSimilarity {
 	                1000,
 	                6,
 	                true,
-	                split,
+	                false,
 	                outputColumnFiles
 	        );
-			if(deleteIndex) {
-				deleteIndexAndForeignKeyColumns(outputColumnFiles);
-			}
 	    } catch (java.lang.InterruptedException | java.io.IOException ex) {
 	        LOGGER.log(Level.SEVERE, "Generating columns failed with exception: ", ex);
 	        System.exit(-1);
@@ -342,7 +346,7 @@ public class DomainSimilarity {
 	    }
 	}
 
-	private static void computeSignatures(File outputPath, String simAlgo) {
+	private static void computeSignatures(File outputPath, String simAlgo, String robustifier) {
 		// ----------------------------------------------------------------
 	    // COMPUTE SIGNATURES
 	    // ----------------------------------------------------------------
@@ -355,10 +359,10 @@ public class DomainSimilarity {
 			new D4().signatures(
 	                new File(outputPath, "compressed-term-index.txt.gz"),
 	                simAlgo,
-	                D4Config.ROBUST_LIBERAL,
+	                robustifier,
 	                true,
 	                false,
-	                false,
+	                D4Config.ROBUST_IGNORELAST.equals(robustifier), // ignore minor drops only when ignore-last robustifier is used
 	                6,
 	                true,
 	                new TelemetryPrinter(),
@@ -370,7 +374,7 @@ public class DomainSimilarity {
 	    }
 	}
 
-	private static void expandColumns(File outputPath) {
+	private static void expandColumns(File outputPath, String trimmer) {
 		// ----------------------------------------------------------------
 	    // EXPAND COLUMNS
 	    // ----------------------------------------------------------------
@@ -383,7 +387,7 @@ public class DomainSimilarity {
 			new D4().expandColumns(
 	                new File(outputPath, "compressed-term-index.txt.gz"),
 	                new File(outputPath, "signatures.txt.gz"),
-	                D4Config.TRIMMER_CONSERVATIVE,
+	                trimmer,
 	                Threshold.getConstraint("GT0.25"),
 	                5,
 	                new BigDecimal("0.05"),
@@ -447,7 +451,7 @@ public class DomainSimilarity {
 	    }
 	}
 
-	private static void pruneStrongDomains(File outputPath) {
+	private static void pruneToStrongDomains(File outputPath) {
 		// ----------------------------------------------------------------
 	    // PRUNE STRONG DOMAINS
 	    // ----------------------------------------------------------------
