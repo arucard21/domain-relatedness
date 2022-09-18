@@ -17,6 +17,8 @@ import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -93,6 +95,9 @@ public class DomainSimilarity {
     		calculateSimilarityToTargetDataset(targetDataset);
     	}
     	calculateOverlapCoefficientOfTargetDatasets();
+
+    	writeAllTermsScoreToFile(TARGET_DATASETS);
+    	discoverDatasetsSimilarToDomain(TARGET_DATASETS);
     }
 
 	private static void copyManualDomainRepresentation() throws IOException {
@@ -259,7 +264,9 @@ public class DomainSimilarity {
 				.filter(datasetTerm -> datasetDomainTerms.contains(datasetTerm))
 				.collect(Collectors.toSet());
 
-		try(OutputStream out = Files.newOutputStream(new File(outputPath, "matched-terms-"+domainRepresentationPath.getName()+".txt").toPath(), createAndAppend)){
+		File matchedTermsFile = new File(outputPath, "matched-terms/"+domainRepresentationPath.getName()+".txt");
+		matchedTermsFile.getParentFile().mkdirs();
+		try(OutputStream out = Files.newOutputStream(matchedTermsFile.toPath(), createAndAppend)){
 			for(String matchedTerm: datasetTerms) {
 				out.write((matchedTerm + "\n").getBytes(StandardCharsets.UTF_8));
 			}
@@ -278,8 +285,8 @@ public class DomainSimilarity {
 		}
 		Map<String, Set<String>> termsPerDataset = new HashMap<>();
 		for(int i = 0; i < TARGET_DATASETS.size(); i++) {
-			String targetDataset = TARGET_DATASETS.get(i);
 			ZonedDateTime start = ZonedDateTime.now();
+			String targetDataset = TARGET_DATASETS.get(i);
 			File outputPath = createOutputPath(DOMAIN_SIMILARITY_OUTPUT_PATH, targetDataset);
 			File termIndexFile = new File(outputPath, "term-index.txt.gz");
 			if(!termsPerDataset.containsKey(targetDataset)) {
@@ -306,6 +313,129 @@ public class DomainSimilarity {
 			Files.writeString(datasetsDirectOverlapCoefficientCsv.toPath(), "\n", createAndAppend);
 			logDuration(start, "calculating direct overlap coefficient for dataset: " + targetDataset);
 		}
+	}
+
+	private static void writeAllTermsScoreToFile(List<String> targetDatasets) throws IOException {
+		File similarityScoresFile = new File("similarity_scores.csv");
+		if(similarityScoresFile.exists()) {
+			System.out.println(similarityScoresFile.getName() +" already exists. Skipping this step.");
+			return;
+		}
+		ZonedDateTime start = ZonedDateTime.now();
+		Files.writeString(similarityScoresFile.toPath(), "dataset_name,domain_representation_type,domain_representation_size,dataset_size,matched,overlap_coefficient\n", createAndAppend);
+		for (String datasetFolderName : targetDatasets) {
+			File outputPath = createOutputPath(DOMAIN_SIMILARITY_OUTPUT_PATH, datasetFolderName);
+			File allScoresFile = new File(outputPath, datasetFolderName+".csv");
+			String allTermsScore = Files.readAllLines(allScoresFile.toPath()).stream()
+					.filter(line -> line.startsWith("all-terms,"))
+					.findAny()
+					.orElseThrow();
+			Files.writeString(similarityScoresFile.toPath(), datasetFolderName + "," + allTermsScore + "\n", createAndAppend);
+		}
+		logDuration(start, "writing all-terms similarity scores to a single file");
+	}
+
+	private static void discoverDatasetsSimilarToDomain(List<String> targetDatasets) throws IOException {
+		File similarDatasetsFile = new File("similar_datasets_grouped.csv");
+		if(similarDatasetsFile.exists()) {
+			System.out.println(similarDatasetsFile.getName() +" already exists. Skipping this step.");
+			return;
+		}
+		ZonedDateTime start = ZonedDateTime.now();
+		List<DatasetSimilarity> sortedByDescendingSimilarityScore = readDatasetsAndSortByDescendingSimilarityScore();
+		calculateConsecutiveDrops(sortedByDescendingSimilarityScore);
+		List<SimilarDatasetsGroup> groupedByConsecutiveSteepestDrop = groupDatasetsByConsecutiveSteepestDrop(sortedByDescendingSimilarityScore);
+		writeToCsvFile(similarDatasetsFile, groupedByConsecutiveSteepestDrop);
+		logDuration(start, "determining datasets that are considered similar to the domain");
+	}
+
+	private static void writeToCsvFile(File similarDatasetsFile, List<SimilarDatasetsGroup> groupedByConsecutiveSteepestDrop)
+			throws IOException {
+		String groupHeader = "dataset_name,similarity_score,consecutive_drop\n";
+		String groupedSimilarityScoresOutput = "";
+		groupedSimilarityScoresOutput += groupHeader;
+
+		for(SimilarDatasetsGroup group: groupedByConsecutiveSteepestDrop) {
+			for(DatasetSimilarity similarity : group.getSimilarDatasets()) {
+				groupedSimilarityScoresOutput += String.format("%s,%f,%f\n",
+						similarity.getDatasetName(),
+						similarity.getSimilarityScore(),
+						similarity.getConsecutiveDrop());
+			}
+			groupedSimilarityScoresOutput += "\n";
+		}
+		Files.writeString(similarDatasetsFile.toPath(), groupedSimilarityScoresOutput, createAndAppend);
+	}
+
+	private static List<DatasetSimilarity> readDatasetsAndSortByDescendingSimilarityScore() throws IOException {
+		Path similarityScoresPath = Paths.get("similarity_scores.csv");
+		List<DatasetSimilarity> sortedByDescendingSimilarityScore = new ArrayList<>();
+	
+		List<String> allLines = Files.readAllLines(similarityScoresPath);
+		allLines.remove(0); // remove header line
+		allLines.forEach(line -> {
+			String[] values = line.split(",");
+			String dataset = values[0];
+			double score = Double.valueOf(values[values.length-1]);
+			sortedByDescendingSimilarityScore.add(new DatasetSimilarity(dataset, score));
+		});
+		Collections.sort(sortedByDescendingSimilarityScore, Comparator.comparingDouble(DatasetSimilarity::getSimilarityScore).reversed());
+		return sortedByDescendingSimilarityScore;
+	}
+
+	private static void calculateConsecutiveDrops(List<DatasetSimilarity> sortedByDescendingSimilarityScore) {
+		for(int i = 0; i < sortedByDescendingSimilarityScore.size(); i++) {
+			DatasetSimilarity currentScore = sortedByDescendingSimilarityScore.get(i);
+			currentScore.setSimilarityOrderIndex(i);
+			if(i == 0) {
+				currentScore.setConsecutiveDrop(-1d); // the first item has no consecutive drop
+			}
+			else {
+				DatasetSimilarity previousScore = sortedByDescendingSimilarityScore.get(i-1);
+				currentScore.setConsecutiveDrop(previousScore.getSimilarityScore() - currentScore.getSimilarityScore());
+			}
+		}
+	}
+
+	private static List<SimilarDatasetsGroup> groupDatasetsByConsecutiveSteepestDrop(List<DatasetSimilarity> sortedByDescendingSimilarityScore) {
+		List<SimilarDatasetsGroup> groupedByConsecutiveSteepestDrop = new ArrayList<>();
+		List<DatasetSimilarity> sortedByDescendingConsecutiveGap = new ArrayList<>(sortedByDescendingSimilarityScore.subList(1, sortedByDescendingSimilarityScore.size()));
+		Collections.sort(sortedByDescendingConsecutiveGap, Comparator.comparingDouble(DatasetSimilarity::getConsecutiveDrop).reversed());
+		while(!sortedByDescendingSimilarityScore.isEmpty()) {
+	
+			boolean isMinor = true;
+			int indexOfNonMinorDrop = 0;
+			DatasetSimilarity maxDrop = null;
+			int currentEndOfGroup = 0;
+			while(isMinor && indexOfNonMinorDrop < sortedByDescendingConsecutiveGap.size()) {
+				maxDrop = sortedByDescendingConsecutiveGap.get(indexOfNonMinorDrop);
+				double startScore = sortedByDescendingSimilarityScore.get(0).getSimilarityScore();
+				currentEndOfGroup = sortedByDescendingSimilarityScore.indexOf(maxDrop) - 1;
+				if(currentEndOfGroup <= 0) {
+					// group of only 1 score is always considered to have a minor drop
+					// FIXME what if there is 1 high score and a bunch of low scores?
+					// the single high score would be taken together with the low scores and likely cause all scores to be in 1 group
+					indexOfNonMinorDrop++;
+					continue;
+				}
+				double endScore = sortedByDescendingSimilarityScore.get(currentEndOfGroup).getSimilarityScore();
+				double totalGroupDrop = startScore - endScore;
+				isMinor = maxDrop.getConsecutiveDrop() < totalGroupDrop;
+				indexOfNonMinorDrop++;
+			}
+			SimilarDatasetsGroup currentGroup;
+			if(isMinor) {
+				// must be the last group, add all remaining items.
+				currentGroup = new SimilarDatasetsGroup(sortedByDescendingSimilarityScore.subList(0, sortedByDescendingSimilarityScore.size()));
+			}
+			else {
+				currentGroup = new SimilarDatasetsGroup(sortedByDescendingSimilarityScore.subList(0, currentEndOfGroup + 1));
+			}
+			groupedByConsecutiveSteepestDrop.add(currentGroup);
+			sortedByDescendingSimilarityScore.removeAll(currentGroup.getSimilarDatasets());
+			sortedByDescendingConsecutiveGap.removeAll(currentGroup.getSimilarDatasets());
+		}
+		return groupedByConsecutiveSteepestDrop;
 	}
 
 	private static Set<String> readTermsFromIndexFile(File termIndexFile) throws IOException{

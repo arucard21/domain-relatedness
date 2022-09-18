@@ -11,6 +11,9 @@ repositories {
     }
 }
 
+sourceCompatibility = JavaVersion.VERSION_17
+targetCompatibility = JavaVersion.VERSION_17
+
 dependencies {
     implementation name: "D4-jar-with-dependencies"
 }
@@ -31,5 +34,5 @@ application {
 }
 
 tasks.withType(JavaExec) {
-    jvmArgs = ['-Xms2g', '-Xmx12g']
+    jvmArgs = ['-Xms2g', '-Xmx15g']
 }
