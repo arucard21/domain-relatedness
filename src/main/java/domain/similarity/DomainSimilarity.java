@@ -344,33 +344,15 @@ public class DomainSimilarity {
 		ZonedDateTime start = ZonedDateTime.now();
 		List<DatasetSimilarity> sortedByDescendingSimilarityScore = readDatasetsAndSortByDescendingSimilarityScore();
 		calculateConsecutiveDrops(sortedByDescendingSimilarityScore);
-		List<SimilarDatasetsGroup> groupedByConsecutiveSteepestDrop = groupDatasetsByConsecutiveSteepestDrop(sortedByDescendingSimilarityScore);
+		List<SimilarDatasetsGroup> groupedByConsecutiveSteepestDrop = groupDatasetsByConsecutiveDrop(sortedByDescendingSimilarityScore);
 		writeToCsvFile(similarDatasetsFile, groupedByConsecutiveSteepestDrop);
 		logDuration(start, "determining datasets that are considered similar to the domain");
-	}
-
-	private static void writeToCsvFile(File similarDatasetsFile, List<SimilarDatasetsGroup> groupedByConsecutiveSteepestDrop)
-			throws IOException {
-		String groupHeader = "dataset_name,similarity_score,consecutive_drop\n";
-		String groupedSimilarityScoresOutput = "";
-		groupedSimilarityScoresOutput += groupHeader;
-
-		for(SimilarDatasetsGroup group: groupedByConsecutiveSteepestDrop) {
-			for(DatasetSimilarity similarity : group.getSimilarDatasets()) {
-				groupedSimilarityScoresOutput += String.format("%s,%f,%f\n",
-						similarity.getDatasetName(),
-						similarity.getSimilarityScore(),
-						similarity.getConsecutiveDrop());
-			}
-			groupedSimilarityScoresOutput += "\n";
-		}
-		Files.writeString(similarDatasetsFile.toPath(), groupedSimilarityScoresOutput, createAndAppend);
 	}
 
 	private static List<DatasetSimilarity> readDatasetsAndSortByDescendingSimilarityScore() throws IOException {
 		Path similarityScoresPath = Paths.get("similarity_scores.csv");
 		List<DatasetSimilarity> sortedByDescendingSimilarityScore = new ArrayList<>();
-	
+
 		List<String> allLines = Files.readAllLines(similarityScoresPath);
 		allLines.remove(0); // remove header line
 		allLines.forEach(line -> {
@@ -397,45 +379,42 @@ public class DomainSimilarity {
 		}
 	}
 
-	private static List<SimilarDatasetsGroup> groupDatasetsByConsecutiveSteepestDrop(List<DatasetSimilarity> sortedByDescendingSimilarityScore) {
-		List<SimilarDatasetsGroup> groupedByConsecutiveSteepestDrop = new ArrayList<>();
-		List<DatasetSimilarity> sortedByDescendingConsecutiveGap = new ArrayList<>(sortedByDescendingSimilarityScore.subList(1, sortedByDescendingSimilarityScore.size()));
-		Collections.sort(sortedByDescendingConsecutiveGap, Comparator.comparingDouble(DatasetSimilarity::getConsecutiveDrop).reversed());
-		while(!sortedByDescendingSimilarityScore.isEmpty()) {
-	
-			boolean isMinor = true;
-			int indexOfNonMinorDrop = 0;
-			DatasetSimilarity maxDrop = null;
-			int currentEndOfGroup = 0;
-			while(isMinor && indexOfNonMinorDrop < sortedByDescendingConsecutiveGap.size()) {
-				maxDrop = sortedByDescendingConsecutiveGap.get(indexOfNonMinorDrop);
-				double startScore = sortedByDescendingSimilarityScore.get(0).getSimilarityScore();
-				currentEndOfGroup = sortedByDescendingSimilarityScore.indexOf(maxDrop) - 1;
-				if(currentEndOfGroup <= 0) {
-					// group of only 1 score is always considered to have a minor drop
-					// FIXME what if there is 1 high score and a bunch of low scores?
-					// the single high score would be taken together with the low scores and likely cause all scores to be in 1 group
-					indexOfNonMinorDrop++;
-					continue;
-				}
-				double endScore = sortedByDescendingSimilarityScore.get(currentEndOfGroup).getSimilarityScore();
-				double totalGroupDrop = startScore - endScore;
-				isMinor = maxDrop.getConsecutiveDrop() < totalGroupDrop;
-				indexOfNonMinorDrop++;
-			}
-			SimilarDatasetsGroup currentGroup;
-			if(isMinor) {
-				// must be the last group, add all remaining items.
-				currentGroup = new SimilarDatasetsGroup(sortedByDescendingSimilarityScore.subList(0, sortedByDescendingSimilarityScore.size()));
+	private static List<SimilarDatasetsGroup> groupDatasetsByConsecutiveDrop(List<DatasetSimilarity> sortedByDescendingSimilarityScore) {
+		List<SimilarDatasetsGroup> groupedByConsecutiveDrop = new ArrayList<>();
+		List<DatasetSimilarity> validDropsSortedDescending = new ArrayList<>(sortedByDescendingSimilarityScore.subList(1, sortedByDescendingSimilarityScore.size()));
+		Collections.sort(validDropsSortedDescending, Comparator.comparingDouble(DatasetSimilarity::getConsecutiveDrop).reversed());
+		double secondHighestDrop = validDropsSortedDescending.get(1).getConsecutiveDrop();
+		double secondLowestDrop = validDropsSortedDescending.get(validDropsSortedDescending.size()-2).getConsecutiveDrop();
+		double dropThreshold = (secondHighestDrop + secondLowestDrop)/2d;
+		for(DatasetSimilarity score : sortedByDescendingSimilarityScore) {
+			if(groupedByConsecutiveDrop.isEmpty() || score.getConsecutiveDrop() > dropThreshold) {
+				SimilarDatasetsGroup group = new SimilarDatasetsGroup(new ArrayList<>());
+				group.getSimilarDatasets().add(score);
+				groupedByConsecutiveDrop.add(group);
 			}
 			else {
-				currentGroup = new SimilarDatasetsGroup(sortedByDescendingSimilarityScore.subList(0, currentEndOfGroup + 1));
+				groupedByConsecutiveDrop.get(groupedByConsecutiveDrop.size()-1).getSimilarDatasets().add(score);
 			}
-			groupedByConsecutiveSteepestDrop.add(currentGroup);
-			sortedByDescendingSimilarityScore.removeAll(currentGroup.getSimilarDatasets());
-			sortedByDescendingConsecutiveGap.removeAll(currentGroup.getSimilarDatasets());
 		}
-		return groupedByConsecutiveSteepestDrop;
+		return groupedByConsecutiveDrop;
+	}
+
+	private static void writeToCsvFile(File similarDatasetsFile, List<SimilarDatasetsGroup> groupedByConsecutiveSteepestDrop)
+			throws IOException {
+		String groupHeader = "dataset_name,similarity_score,consecutive_drop\n";
+		String groupedSimilarityScoresOutput = "";
+		groupedSimilarityScoresOutput += groupHeader;
+
+		for(SimilarDatasetsGroup group: groupedByConsecutiveSteepestDrop) {
+			for(DatasetSimilarity similarity : group.getSimilarDatasets()) {
+				groupedSimilarityScoresOutput += String.format("%s,%f,%f\n",
+						similarity.getDatasetName(),
+						similarity.getSimilarityScore(),
+						similarity.getConsecutiveDrop());
+			}
+			groupedSimilarityScoresOutput += "\n";
+		}
+		Files.writeString(similarDatasetsFile.toPath(), groupedSimilarityScoresOutput, createAndAppend);
 	}
 
 	private static Set<String> readTermsFromIndexFile(File termIndexFile) throws IOException{
