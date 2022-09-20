@@ -161,12 +161,12 @@ public class DomainSimilarity {
 		    		columnDomain.setTerms(strongDomain.getTerms().stream()
 		    				.flatMap(termsBlock -> termsBlock.stream())
 			    			.flatMap(eq -> eq.getTerms().stream())
-			    			.collect(Collectors.toList()));
+			    			.toList());
 		    	}
 		    	else {
 		    		columnDomain.setTerms(strongDomain.getTerms().get(0).stream()
 			    			.flatMap(eq -> eq.getTerms().stream())
-			    			.collect(Collectors.toList()));
+			    			.toList());
 		    	}
 		    	File columnDomainFile = new File(datasetDomainPath, strongDomainFile.getName());
 		    	try(Writer writer = new FileWriter(columnDomainFile, StandardCharsets.UTF_8)){
@@ -336,7 +336,7 @@ public class DomainSimilarity {
 	}
 
 	private static void discoverDatasetsSimilarToDomain(List<String> targetDatasets) throws IOException {
-		File similarDatasetsFile = new File("similar_datasets_grouped.csv");
+		File similarDatasetsFile = new File("datasets_similar_to_domain.csv");
 		if(similarDatasetsFile.exists()) {
 			System.out.println(similarDatasetsFile.getName() +" already exists. Skipping this step.");
 			return;
@@ -345,7 +345,16 @@ public class DomainSimilarity {
 		List<DatasetSimilarity> sortedByDescendingSimilarityScore = readDatasetsAndSortByDescendingSimilarityScore();
 		calculateConsecutiveDrops(sortedByDescendingSimilarityScore);
 		List<SimilarDatasetsGroup> groupedByConsecutiveSteepestDrop = groupDatasetsByConsecutiveDrop(sortedByDescendingSimilarityScore);
-		writeToCsvFile(similarDatasetsFile, groupedByConsecutiveSteepestDrop);
+		List<DatasetSimilarity> datasetsSimilarToDomain = groupedByConsecutiveSteepestDrop.subList(0, groupedByConsecutiveSteepestDrop.size()-1).stream()
+				.flatMap(group -> group.getSimilarDatasets().stream())
+				.toList();
+
+		String groupHeader = "dataset_name,similarity_score\n";
+		Files.writeString(similarDatasetsFile.toPath(), groupHeader, createAndAppend);
+		for(DatasetSimilarity dataset : datasetsSimilarToDomain) {
+			String datasetOutput = String.format("%s,%f\n", dataset.getDatasetName(), dataset.getSimilarityScore());
+			Files.writeString(similarDatasetsFile.toPath(), datasetOutput, createAndAppend);
+		}
 		logDuration(start, "determining datasets that are considered similar to the domain");
 	}
 
@@ -397,24 +406,6 @@ public class DomainSimilarity {
 			}
 		}
 		return groupedByConsecutiveDrop;
-	}
-
-	private static void writeToCsvFile(File similarDatasetsFile, List<SimilarDatasetsGroup> groupedByConsecutiveSteepestDrop)
-			throws IOException {
-		String groupHeader = "dataset_name,similarity_score,consecutive_drop\n";
-		String groupedSimilarityScoresOutput = "";
-		groupedSimilarityScoresOutput += groupHeader;
-
-		for(SimilarDatasetsGroup group: groupedByConsecutiveSteepestDrop) {
-			for(DatasetSimilarity similarity : group.getSimilarDatasets()) {
-				groupedSimilarityScoresOutput += String.format("%s,%f,%f\n",
-						similarity.getDatasetName(),
-						similarity.getSimilarityScore(),
-						similarity.getConsecutiveDrop());
-			}
-			groupedSimilarityScoresOutput += "\n";
-		}
-		Files.writeString(similarDatasetsFile.toPath(), groupedSimilarityScoresOutput, createAndAppend);
 	}
 
 	private static Set<String> readTermsFromIndexFile(File termIndexFile) throws IOException{
