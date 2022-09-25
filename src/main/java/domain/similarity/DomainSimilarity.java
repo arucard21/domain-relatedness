@@ -46,6 +46,7 @@ public class DomainSimilarity {
 	public static final String DOMAIN_SIMILARITY_OUTPUT_PATH = "output/domain-similarity";
 	public static final String DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED = "precision";
 	public static final String DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED_TF = "precision-tf";
+	public static final String DOMAIN_REPRESENTATION_ACCURACY_OPTIMIZED = "accuracy";
 	public static final String DOMAIN_REPRESENTATION_RECALL_OPTIMIZED = "recall";
 	public static final String DOMAIN_REPRESENTATION_RECALL_OPTIMIZED_TF = "recall-tf";
 	public static final String DOMAIN_REPRESENTATION_ALL_TERMS = "all-terms";
@@ -60,12 +61,13 @@ public class DomainSimilarity {
 	public static final String ROBUSTIFIER_IGNORE_LAST = D4Config.ROBUST_IGNORELAST;
 	public static final String TRIMMER_CONSERVATIVE = D4Config.TRIMMER_CONSERVATIVE;
 	public static final String TRIMMER_LIBERAL = D4Config.TRIMMER_LIBERAL;
+	public static final String TRIMMER_CENTRIST = D4Config.TRIMMER_CENTRIST;
 	public static final Path TASK_DURATIONS_FILE = Paths.get("task_durations.csv");
 	public static final OpenOption[] createAndAppend = new OpenOption[]{StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.APPEND};
 	public static final Logger LOGGER = Logger.getLogger(D4.class.getName());
 	public static final List<String> TARGET_DATASETS = List.of(
-			"imdb",
-			"tmdb",
+//			"imdb",
+//			"tmdb",
 			"rt",
 			"indian",
 			"movies",
@@ -77,19 +79,21 @@ public class DomainSimilarity {
 			"datasets.data-cityofnewyork-us.services");
 
 	public static void main(String[] args) throws IOException {
-		copyManualDomainRepresentation();
+//		copyManualDomainRepresentation();
 
     	generateDomainRepresentation(DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED, 	JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	false);
     	generateDomainRepresentation(DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED_TF, 	TERM_FREQUENCY_BASED_JACCARD, 	ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	false);
 
-    	generateDomainRepresentation(DOMAIN_REPRESENTATION_RECALL_OPTIMIZED, 		JACCARD_INDEX, 					ROBUSTIFIER_IGNORE_LAST, 	TRIMMER_LIBERAL, 		false, 	false);
-    	generateDomainRepresentation(DOMAIN_REPRESENTATION_RECALL_OPTIMIZED_TF, 	TERM_FREQUENCY_BASED_JACCARD, 	ROBUSTIFIER_IGNORE_LAST, 	TRIMMER_LIBERAL, 		false, 	false);
+    	generateDomainRepresentation(DOMAIN_REPRESENTATION_ACCURACY_OPTIMIZED, 		JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CENTRIST, 		false, 	true);
+
+//    	generateDomainRepresentation(DOMAIN_REPRESENTATION_RECALL_OPTIMIZED, 		JACCARD_INDEX, 					ROBUSTIFIER_IGNORE_LAST, 	TRIMMER_LIBERAL, 		false, 	false);
+//    	generateDomainRepresentation(DOMAIN_REPRESENTATION_RECALL_OPTIMIZED_TF, 	TERM_FREQUENCY_BASED_JACCARD, 	ROBUSTIFIER_IGNORE_LAST, 	TRIMMER_LIBERAL, 		false, 	false);
 
     	generateDomainRepresentation(DOMAIN_REPRESENTATION_NO_EXPAND, 				JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	true, 	false);
-    	generateDomainRepresentation(DOMAIN_REPRESENTATION_NO_EXPAND_TF, 			TERM_FREQUENCY_BASED_JACCARD, 	ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	true, 	false);
+//    	generateDomainRepresentation(DOMAIN_REPRESENTATION_NO_EXPAND_TF, 			TERM_FREQUENCY_BASED_JACCARD, 	ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	true, 	false);
 
     	generateDomainRepresentation(DOMAIN_REPRESENTATION_ALL_TERMS, 				JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	true);
-    	generateDomainRepresentation(DOMAIN_REPRESENTATION_ALL_TERMS_TF, 			TERM_FREQUENCY_BASED_JACCARD, 	ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	true);
+//    	generateDomainRepresentation(DOMAIN_REPRESENTATION_ALL_TERMS_TF, 			TERM_FREQUENCY_BASED_JACCARD, 	ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	true);
 
     	for(String targetDataset: TARGET_DATASETS) {
     		calculateSimilarityToTargetDataset(targetDataset);
@@ -100,16 +104,16 @@ public class DomainSimilarity {
     	discoverDatasetsSimilarToDomain(TARGET_DATASETS);
     }
 
-	private static void copyManualDomainRepresentation() throws IOException {
-		String movieTitlesColumnDomain = "dataset-domain/1.json";
-		Path source = Paths.get(DOMAIN_REPRESENTATION_MANUAL, movieTitlesColumnDomain);
-		Path target = Paths.get(DOMAIN_REPRESENTATION_OUTPUT_PATH, DOMAIN_REPRESENTATION_MANUAL, movieTitlesColumnDomain);
-		if(target.toFile().exists()) {
-			return;
-		}
-		target.toFile().getParentFile().mkdirs();
-		Files.copy(source, target);
-	}
+//	private static void copyManualDomainRepresentation() throws IOException {
+//		String movieTitlesColumnDomain = "dataset-domain/1.json";
+//		Path source = Paths.get(DOMAIN_REPRESENTATION_MANUAL, movieTitlesColumnDomain);
+//		Path target = Paths.get(DOMAIN_REPRESENTATION_OUTPUT_PATH, DOMAIN_REPRESENTATION_MANUAL, movieTitlesColumnDomain);
+//		if(target.toFile().exists()) {
+//			return;
+//		}
+//		target.toFile().getParentFile().mkdirs();
+//		Files.copy(source, target);
+//	}
 
 	private static void generateDomainRepresentation(String outputFolder, String simAlgo, String robustifier, String trimmer, boolean noExpand, boolean allTerms) throws IOException {
 		generateColumnDomains(outputFolder, simAlgo, robustifier, trimmer, noExpand);
@@ -184,13 +188,14 @@ public class DomainSimilarity {
 		generateTargetDatasetTermIndex(datasetFolderName);
 		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED);
 		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED_TF);
-		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_RECALL_OPTIMIZED);
-		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_RECALL_OPTIMIZED_TF);
+		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_ACCURACY_OPTIMIZED);
+//		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_RECALL_OPTIMIZED);
+//		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_RECALL_OPTIMIZED_TF);
 		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_NO_EXPAND);
-		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_NO_EXPAND_TF);
+//		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_NO_EXPAND_TF);
 		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_ALL_TERMS);
-		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_ALL_TERMS_TF);
-		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_MANUAL);
+//		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_ALL_TERMS_TF);
+//		calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, DOMAIN_REPRESENTATION_MANUAL);
 	}
 
 	private static void generateTargetDatasetTermIndex(String datasetFolderName) throws IOException {
