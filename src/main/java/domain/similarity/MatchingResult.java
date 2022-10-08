@@ -4,6 +4,7 @@ public class MatchingResult {
 	private long matched;
 	private long domainRepresentationSize;
 	private long datasetSize;
+	private double similarityScore;
 
 	public MatchingResult(long matched, long domainRepresentationSize, long datasetSize) {
 		this.matched = matched;
@@ -28,5 +29,11 @@ public class MatchingResult {
 	}
 	public void setDatasetSize(long datasetSize) {
 		this.datasetSize = datasetSize;
+	}
+	public double getSimilarityScore() {
+		return similarityScore;
+	}
+	public void setSimilarityScore(double similarityScore) {
+		this.similarityScore = similarityScore;
 	}
 }

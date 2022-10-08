@@ -19,10 +19,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonIOException;
 import com.google.gson.JsonSyntaxException;
@@ -40,7 +39,6 @@ public class DomainSimilarity {
 	public static boolean LOG_DURATION = false;
 
 	public static final Path INPUT_DIR = Paths.get("input");
-	public static final Path INPUT_DOMAIN_REPRESENTATION_DATA = INPUT_DIR.resolve("domain-data");
 	public static final Path VARIATIONS_OUTPUT_DIR= Paths.get("output-variations");
 	public static final Path VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_DIR = VARIATIONS_OUTPUT_DIR.resolve("domain-representation");
 	public static final Path VARIATIONS_OUTPUT_DOMAIN_SIMILARITY_DIR = VARIATIONS_OUTPUT_DIR.resolve("domain-similarity");
@@ -50,16 +48,24 @@ public class DomainSimilarity {
 	public static final Path VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_ALL_TERMS = VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_DIR.resolve("all-terms");
 	public static final Path VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_NO_EXPAND = VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_DIR.resolve("no-expand");
 
-	public static final Path EVALUATION_OUTPUT_DIR= Paths.get("output-evaluation");
-	public static final Path EVALUATION_OUTPUT_DOMAIN_REPRESENTATION = EVALUATION_OUTPUT_DIR.resolve("domain-representation");
-	public static final Path EVALUATION_OUTPUT_DOMAIN_SIMILARITY = EVALUATION_OUTPUT_DIR.resolve("domain-similarity");
-	public static final Path EVALUATION_TASK_DURATIONS_CSV = EVALUATION_OUTPUT_DIR.resolve("task_durations_evaluation.csv");
-	public static final Path EVALUATION_OUTPUT_ALL_SIMILARITY_SCORES_CSV = EVALUATION_OUTPUT_DIR.resolve("similarity_scores.csv");
-	public static final Path EVALUATION_OUTPUT_DATASETS_FOCUSED_ON_DOMAIN = EVALUATION_OUTPUT_DIR.resolve("datasets_focused_on_domain.csv");
+	public static final Path EVALUATION_AUTOMATED_OUTPUT_DIR= Paths.get("output-evaluation-automated");
+	public static final Path EVALUATION_AUTOMATED_OUTPUT_DOMAIN_REPRESENTATION = EVALUATION_AUTOMATED_OUTPUT_DIR.resolve("domain-representation");
+	public static final String EVALUATION_TASK_DURATIONS_CSV = "task_durations_evaluation.csv";
+	public static final String EVALUATION_OUTPUT_ALL_SIMILARITY_SCORES_CSV = "all_similarity_scores.csv";
+	public static final String EVALUATION_OUTPUT_DATASETS_FOCUSED_ON_DOMAIN = "datasets_focused_on_domain.csv";
 
+	public static final String COLUMNS_DIR_NAME = "columns";
+	public static final String COLUMNS_METADATA_FILE_NAME = "columns.tsv";
+	public static final String TERM_INDEX_FILE_NAME = "term-index.txt.gz";
+	public static final String EQUIVALENCE_CLASSES_FILE_NAME = "compressed-term-index.txt.gz";
+	public static final String SIGNATURES_FILE_NAME = "signatures.txt.gz";
+	public static final String EXPANDED_COLUMNS_FILE_NAME = "expanded-columns.txt.gz";
+	public static final String LOCAL_DOMAINS_FILE_NAME = "local-domains.txt.gz";
+	public static final String COLUMN_DOMAINS_INTERNAL_FILE_NAME = "strong-domains.txt.gz";
 	public static final String COLUMN_DOMAINS_DIR_NAME = "domains";
 	public static final String DATASET_DOMAIN_DIR_NAME = "dataset-domain";
 	public static final String DATASET_SIMILARITY_SCORES_CSV_NAME = "similarity_scores.csv";
+
 	public static final String JACCARD_INDEX = D4Config.EQSIM_JI;
 	public static final String TERM_FREQUENCY_BASED_JACCARD = D4Config.EQSIM_TFICF;
 	public static final String ROBUSTIFIER_LIBERAL = D4Config.ROBUST_LIBERAL;
@@ -67,8 +73,10 @@ public class DomainSimilarity {
 	public static final String TRIMMER_CONSERVATIVE = D4Config.TRIMMER_CONSERVATIVE;
 	public static final String TRIMMER_LIBERAL = D4Config.TRIMMER_LIBERAL;
 	public static final String TRIMMER_CENTRIST = D4Config.TRIMMER_CENTRIST;
+
 	public static final OpenOption[] createAndAppend = new OpenOption[]{StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.APPEND};
-	public static final Logger LOGGER = Logger.getLogger(D4.class.getName());
+
+	public static final Path DATASET_DOMAIN_INPUT_DATASETS_COMBINED = INPUT_DIR.resolve("domain-data");
 	public static final List<Path> VARIATIONS_INPUT_DATASETS = List.of(
 			INPUT_DIR.resolve("indian"),
 			INPUT_DIR.resolve("movies"),
@@ -80,17 +88,9 @@ public class DomainSimilarity {
 			INPUT_DIR.resolve("datasets.data-cityofnewyork-us.finance"),
 			INPUT_DIR.resolve("datasets.data-cityofnewyork-us.services"));
 	public static final List<Path> EVALUATION_INPUT_DATASETS = List.of(
-			INPUT_DIR.resolve("imdb"),
-			INPUT_DIR.resolve("tmdb"),
-			INPUT_DIR.resolve("indian"),
-			INPUT_DIR.resolve("movies"),
-			INPUT_DIR.resolve("netflix"),
-			INPUT_DIR.resolve("tmdb-350k"),
 			INPUT_DIR.resolve("rt"),
-			INPUT_DIR.resolve("steam"),
-			INPUT_DIR.resolve("datasets.data-cityofnewyork-us.education"),
-			INPUT_DIR.resolve("datasets.data-cityofnewyork-us.finance"),
-			INPUT_DIR.resolve("datasets.data-cityofnewyork-us.services"));
+			INPUT_DIR.resolve("steam")
+			);
 
 	public static void main(String[] args) throws IOException {
 		runVariationsExperiments();
@@ -99,75 +99,84 @@ public class DomainSimilarity {
     }
 
 	private static void runVariationsExperiments() throws IOException {
-		generateDomainRepresentation(INPUT_DOMAIN_REPRESENTATION_DATA, VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED, 	JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	false);
-    	generateDomainRepresentation(INPUT_DOMAIN_REPRESENTATION_DATA, VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED_TF, 	TERM_FREQUENCY_BASED_JACCARD, 	ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	false);
-    	generateDomainRepresentation(INPUT_DOMAIN_REPRESENTATION_DATA, VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_ACCURACY_OPTIMIZED, 		JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CENTRIST, 		false, 	true);
-    	generateDomainRepresentation(INPUT_DOMAIN_REPRESENTATION_DATA, VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_NO_EXPAND, 				JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	true, 	false);
-    	generateDomainRepresentation(INPUT_DOMAIN_REPRESENTATION_DATA, VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_ALL_TERMS, 				JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	true);
+		Path precisionDatasetDomainPath = generateDomainRepresentation(DATASET_DOMAIN_INPUT_DATASETS_COMBINED, 	VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED, 	JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	false);
+		Path termFreqDatasetDomainPath = generateDomainRepresentation(DATASET_DOMAIN_INPUT_DATASETS_COMBINED, 	VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED_TF, TERM_FREQUENCY_BASED_JACCARD, 	ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	false);
+		Path accuracyDatasetDomainPath = generateDomainRepresentation(DATASET_DOMAIN_INPUT_DATASETS_COMBINED, 	VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_ACCURACY_OPTIMIZED, 	JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CENTRIST, 		false, 	true);
+		Path noExpandDatasetDomainPath = generateDomainRepresentation(DATASET_DOMAIN_INPUT_DATASETS_COMBINED, 	VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_NO_EXPAND, 				JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	true, 	false);
+		Path allTermsDatasetDomainPath = generateDomainRepresentation(DATASET_DOMAIN_INPUT_DATASETS_COMBINED, 	VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_ALL_TERMS, 				JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	true);
     	for(Path inputDataset: VARIATIONS_INPUT_DATASETS) {
     		calculateSimilarityToTargetDatasetForAllVariations(
     				inputDataset,
     				VARIATIONS_OUTPUT_DOMAIN_SIMILARITY_DIR,
-    				List.of(
-    						VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED,
-    						VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED_TF,
-    						VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_ACCURACY_OPTIMIZED,
-    						VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_NO_EXPAND,
-    						VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_ALL_TERMS));
+					precisionDatasetDomainPath,
+					termFreqDatasetDomainPath,
+					accuracyDatasetDomainPath,
+					noExpandDatasetDomainPath,
+					allTermsDatasetDomainPath);
     	}
 	}
 
 	private static void runEvaluationExperiments() throws IOException {
-		generateDomainRepresentation(INPUT_DOMAIN_REPRESENTATION_DATA, EVALUATION_OUTPUT_DOMAIN_REPRESENTATION, JACCARD_INDEX, ROBUSTIFIER_LIBERAL, TRIMMER_CONSERVATIVE, false, false);
-		for(Path inputDataset: EVALUATION_INPUT_DATASETS) {
-			generateTargetDatasetTermIndex(inputDataset, EVALUATION_OUTPUT_DOMAIN_SIMILARITY);
-			calculateSimilarityToTargetDatasetForDomainRepresentation(inputDataset, EVALUATION_OUTPUT_DOMAIN_REPRESENTATION, EVALUATION_OUTPUT_DOMAIN_SIMILARITY);
+		Path evaluationDatasetDomainPath = generateDomainRepresentation(DATASET_DOMAIN_INPUT_DATASETS_COMBINED, EVALUATION_AUTOMATED_OUTPUT_DOMAIN_REPRESENTATION, JACCARD_INDEX, ROBUSTIFIER_LIBERAL, TRIMMER_CONSERVATIVE, false, false);
+		Path domainSimilarityResultPath = evaluateAccuracyForAutomatedUseCase(evaluationDatasetDomainPath);
+		System.out.println("The domain similarity results can be found in " + domainSimilarityResultPath.toString());
+	}
+
+	private static Path evaluateAccuracyForAutomatedUseCase(Path datasetDomainPath) throws IOException {
+		return evaluateAccuracy(datasetDomainPath, EVALUATION_INPUT_DATASETS, EVALUATION_AUTOMATED_OUTPUT_DIR);
+	}
+
+	private static Path evaluateAccuracy(Path datasetDomainPath, List<Path> inputDatasets, Path outputPath) throws IOException {
+		List<Path> datasetSimilarityScorePaths = new ArrayList<>();
+		for(Path inputDataset: inputDatasets) {
+			Path termIndexPath = generateTargetDatasetTermIndex(inputDataset, outputPath);
+			Path similarityScoresCsvPath = termIndexPath.getParent().resolve(DATASET_SIMILARITY_SCORES_CSV_NAME);
+			Path matchingResultPath = calculateSimilarityToTargetDatasetForDomainRepresentation(termIndexPath, datasetDomainPath);
+			writeSimilarityScoreToCsvFile(inputDataset.getFileName().toString(), matchingResultPath, similarityScoresCsvPath);
+			datasetSimilarityScorePaths.add(similarityScoresCsvPath);
     	}
-    	List<Path> datasetOutputPaths = EVALUATION_INPUT_DATASETS.stream()
-				.map(inputDatasetPath -> convertDatasetInputPathToOutputPath(inputDatasetPath, EVALUATION_OUTPUT_DOMAIN_SIMILARITY))
-				.toList();
-		writeSimilarityScoresToFile(datasetOutputPaths, EVALUATION_OUTPUT_ALL_SIMILARITY_SCORES_CSV);
-    	discoverDatasetsSimilarToDomain(EVALUATION_OUTPUT_ALL_SIMILARITY_SCORES_CSV, EVALUATION_OUTPUT_DATASETS_FOCUSED_ON_DOMAIN);
+		Path combinedSimilarityScoresPath = combineDatasetSimilarityScoresInCsvFile(datasetSimilarityScorePaths, outputPath);
+    	return discoverDatasetsSimilarToDomain(combinedSimilarityScoresPath);
 	}
 
-	private static void generateDomainRepresentation(Path domainRepresentativeDatasetsPath, Path outputPath, String simAlgo, String robustifier, String trimmer, boolean noExpand, boolean allTerms) throws IOException {
-		generateColumnDomains(domainRepresentativeDatasetsPath, outputPath, simAlgo, robustifier, trimmer, noExpand);
-		generateDatasetDomain(outputPath, allTerms);
+	private static Path generateDomainRepresentation(Path domainRepresentativeDatasetPath, Path outputPath, String simAlgo, String robustifier, String trimmer, boolean noExpand, boolean allTerms) throws IOException {
+		Path columnDomainsPath = generateColumnDomains(domainRepresentativeDatasetPath, outputPath, simAlgo, robustifier, trimmer, noExpand);
+		return generateDatasetDomain(columnDomainsPath, allTerms);
 	}
 
-	private static void generateColumnDomains(Path domainRepresentativeDatasetsPath, Path outputPath, String simAlgo, String robustifier, String trimmer, boolean noExpand) throws IOException {
+	private static Path generateColumnDomains(Path domainRepresentativeDatasetPath, Path outputPath, String simAlgo, String robustifier, String trimmer, boolean noExpand) throws IOException {
 		ZonedDateTime start = ZonedDateTime.now();
 		ensureOutputPathExists(outputPath);
-		generateColumnFiles(domainRepresentativeDatasetsPath, outputPath);
-		generateTermIndex(outputPath);
-		generateEquivalenceClasses(outputPath);
-		computeSignatures(outputPath, simAlgo, robustifier);
+		Path columnsPath = generateColumnFiles(domainRepresentativeDatasetPath, outputPath);
+		Path termIndexPath = generateTermIndex(columnsPath);
+		Path eqsPath = generateEquivalenceClasses(termIndexPath);
+		Path signaturesPath = computeSignatures(eqsPath, simAlgo, robustifier);
+		Path expandedColumnsPath;
 		if(noExpand) {
-			noExpandColumns(outputPath);
+			expandedColumnsPath = noExpandColumns(eqsPath);
 		}
 		else {
-			expandColumns(outputPath, trimmer);
+			expandedColumnsPath = expandColumns(eqsPath, signaturesPath, trimmer);
 		}
-		discoverLocalDomains(outputPath);
-		pruneToStrongDomains(outputPath);
-		exportStrongDomains(outputPath);
-		logDuration(start, "generating column domain");
+		Path localDomainsPath = discoverLocalDomains(eqsPath, signaturesPath, expandedColumnsPath);
+		Path columnDomainsInternalFormatPath = pruneToStrongDomains(eqsPath, localDomainsPath);
+		Path columnDomainsPath = exportStrongDomains(termIndexPath, eqsPath, columnDomainsInternalFormatPath);
+		logDuration(start, "generating column domain", outputPath);
+		return columnDomainsPath;
 	}
 
-	private static void generateDatasetDomain(Path outputPath, boolean allTerms) throws IOException {
-		// read exported JSON and output new JSON that only keeps the first block
-		Path exportedColumnDomainsPath = outputPath.resolve(COLUMN_DOMAINS_DIR_NAME);
-		if(!inputExists(exportedColumnDomainsPath)) {
-			return;
+	private static Path generateDatasetDomain(Path columnDomainsPath, boolean allTerms) throws IOException {
+		if(!inputExists(columnDomainsPath)) {
+			throw new IllegalArgumentException(String.format("The path \"%s\" to the column domains used as input does not exist"));
 		}
-		Path datasetDomainPath = outputPath.resolve(DATASET_DOMAIN_DIR_NAME);
-		if(outputExists(datasetDomainPath)) {
-			return;
+		Path datasetDomainPath = columnDomainsPath.getParent().resolve(DATASET_DOMAIN_DIR_NAME);
+		if(!outputExists(datasetDomainPath)) {
+			ensureOutputPathExists(datasetDomainPath);
+			ZonedDateTime start = ZonedDateTime.now();
+			Files.list(columnDomainsPath).forEach(columnDomainPath -> writeColumnDomainTermsUsedInDatasetDomain(columnDomainPath, datasetDomainPath, allTerms));
+			logDuration(start, "generating dataset domain", columnDomainsPath.getParent().getParent());
 		}
-		ensureOutputPathExists(datasetDomainPath);
-		ZonedDateTime start = ZonedDateTime.now();
-		Files.list(exportedColumnDomainsPath).forEach(columnDomainPath -> writeColumnDomainTermsUsedInDatasetDomain(columnDomainPath, datasetDomainPath, allTerms));
-		logDuration(start, "generating dataset domain");
+		return datasetDomainPath;
 	}
 
 	private static void writeColumnDomainTermsUsedInDatasetDomain(Path columnDomainPath, Path datasetDomainPath, boolean allTerms) {
@@ -224,65 +233,84 @@ public class DomainSimilarity {
 		}
 	}
 
-	private static void calculateSimilarityToTargetDatasetForAllVariations(Path datasetFolderName, Path outputDirPath, List<Path> domainRepresentationVariationPaths) throws IOException {
-		generateTargetDatasetTermIndex(datasetFolderName, outputDirPath);
-		for(Path domainRepresentationVariationPath: domainRepresentationVariationPaths) {
-			calculateSimilarityToTargetDatasetForDomainRepresentation(datasetFolderName, domainRepresentationVariationPath, outputDirPath);
+	private static Path calculateSimilarityToTargetDatasetForAllVariations(Path datasetFolderName, Path outputDirPath, Path... domainRepresentationVariationPaths) throws IOException {
+		Path termIndexPath = generateTargetDatasetTermIndex(datasetFolderName, outputDirPath);
+		Path similarityScoresCsvPath = termIndexPath.getParent().resolve(DATASET_SIMILARITY_SCORES_CSV_NAME);
+		if(!outputExists(similarityScoresCsvPath)) {
+			for(Path domainRepresentationVariationPath: domainRepresentationVariationPaths) {
+				Path matchingResultPath = calculateSimilarityToTargetDatasetForDomainRepresentation(termIndexPath, domainRepresentationVariationPath);
+				writeSimilarityScoreToCsvFile(
+						domainRepresentationVariationPath.getParent().getFileName().toString(),
+						matchingResultPath,
+						similarityScoresCsvPath);
+			}
+		}
+		return similarityScoresCsvPath;
+	}
+
+	private static void writeSimilarityScoreToCsvFile(String name, Path matchingResultPath, Path similarityScoresCsvPath) throws IOException {
+		if(!inputExists(matchingResultPath)) {
+			throw new IllegalArgumentException(String.format("The input file containing matching results %s does not exist.", matchingResultPath.toString()));
+		}
+		if(!similarityScoresCsvPath.toFile().exists()) {
+			Files.writeString(similarityScoresCsvPath, "domain_representation_type,domain_representation_size,dataset_size,matched,overlap_coefficient\n", createAndAppend);
+		}
+		try(Reader reader = Files.newBufferedReader(matchingResultPath)){
+			MatchingResult matchingResult = new Gson().fromJson(reader, MatchingResult.class);
+			String csvOutput = String.format(
+					"%s,%d,%d,%d,%f\n",
+					name,
+					matchingResult.getDomainRepresentationSize(),
+					matchingResult.getDatasetSize(),
+					matchingResult.getMatched(),
+					matchingResult.getSimilarityScore());
+			Files.writeString(similarityScoresCsvPath, csvOutput, createAndAppend);
 		}
 	}
 
-	private static void generateTargetDatasetTermIndex(Path inputDataset, Path outputDirPath) throws IOException {
+	private static Path generateTargetDatasetTermIndex(Path inputDataset, Path outputDirPath) throws IOException {
 		ZonedDateTime start = ZonedDateTime.now();
 		Path outputPath = convertDatasetInputPathToOutputPath(inputDataset, outputDirPath);
 		ensureOutputPathExists(outputPath);
-		generateColumnFiles(inputDataset, outputPath);
-		generateTermIndex(outputPath);
-		logDuration(start, "generating term index for " + inputDataset);
+		Path columnsPath = generateColumnFiles(inputDataset, outputPath);
+		Path termIndexPath = generateTermIndex(columnsPath);
+		logDuration(start, "generating term index for " + inputDataset, outputDirPath);
+		return termIndexPath;
 	}
 
-	private static void calculateSimilarityToTargetDatasetForDomainRepresentation(Path inputDataset, Path domainRepresentationPath, Path outputDirPath) throws IOException {
-		if(!inputExists(inputDataset)) {
-			return;
+	private static Path calculateSimilarityToTargetDatasetForDomainRepresentation(Path termIndexPath, Path datasetDomainPath) throws IOException {
+		if(!inputExists(termIndexPath)) {
+			throw new IllegalArgumentException(String.format("The input dataset %s does not exist.", termIndexPath.toString()));
 		}
-		Path outputPath = convertDatasetInputPathToOutputPath(inputDataset, outputDirPath);
+		Path outputPath = termIndexPath.getParent();
 		ensureOutputPathExists(outputPath);
-		Path matchingResultFile = outputPath.resolve(String.format("matching_result_%s_%s.txt", inputDataset.getFileName().toString(), domainRepresentationPath.getFileName().toString()));
-		Path matchingResultCsv = outputPath.resolve(DATASET_SIMILARITY_SCORES_CSV_NAME);
-		if(outputExists(matchingResultFile)) {
-			return;
+		Path matchingResultPath = outputPath.resolve(String.format("matching_result_%s_%s.json", termIndexPath.getParent().getFileName().toString(), datasetDomainPath.getParent().getFileName().toString()));
+		if(outputExists(matchingResultPath)) {
+			return matchingResultPath;
 		}
 		ZonedDateTime start = ZonedDateTime.now();
-		MatchingResult matchingResult = calculateTargetDatasetMatchedTerms(inputDataset, domainRepresentationPath.resolve(DATASET_DOMAIN_DIR_NAME), outputPath);
-		String matchingResultMessage = String.format(
-				"Matched %d terms on a dataset with %d terms, using a domain representation with %d terms\n",
-				matchingResult.getMatched(),
-				matchingResult.getDatasetSize(),
-				matchingResult.getDomainRepresentationSize());
-		System.out.print(matchingResultMessage);
-		Files.writeString(matchingResultFile, matchingResultMessage, createAndAppend);
-		if(!matchingResultCsv.toFile().exists()) {
-			Files.writeString(matchingResultCsv, "domain_representation_type,domain_representation_size,dataset_size,matched,overlap_coefficient\n", createAndAppend);
-		}
+		MatchingResult matchingResult = countTargetDatasetMatchedTerms(termIndexPath, datasetDomainPath);
 		double overlapCoefficient = (matchingResult.getMatched() * 1d) / (Math.min(matchingResult.getDatasetSize(), matchingResult.getDomainRepresentationSize()));
-		String csvOutput = String.format(
-				"%s,%d,%d,%d,%f\n",
-				outputPath,
-				matchingResult.getDomainRepresentationSize(),
-				matchingResult.getDatasetSize(),
-				matchingResult.getMatched(),
-				overlapCoefficient);
-		Files.writeString(matchingResultCsv, csvOutput, createAndAppend);
-		logDuration(start, "calculating similarity score for " + inputDataset + " using the " + outputPath + " domain representation");
+		matchingResult.setSimilarityScore(overlapCoefficient);
+		try(Writer writer = Files.newBufferedWriter(matchingResultPath)){
+	    	new GsonBuilder().setPrettyPrinting().create().toJson(matchingResult, writer);
+    	}
+		logDuration(
+				start,
+				"calculating similarity score for " + termIndexPath.getParent().toString() + " using the " + datasetDomainPath.getParent() + " domain representation",
+				termIndexPath.getParent().getParent());
+		return matchingResultPath;
 	}
 
 	private static Path convertDatasetInputPathToOutputPath(Path inputDataset, Path outputDirPath) {
 		return outputDirPath.resolve(inputDataset.getFileName());
 	}
 
-	private static MatchingResult calculateTargetDatasetMatchedTerms(Path inputDataset, Path domainRepresentationTermsPath, Path outputPath) throws JsonSyntaxException, JsonIOException, IOException {
-		if(!inputExists(inputDataset) || !inputExists(domainRepresentationTermsPath)) {
+	private static MatchingResult countTargetDatasetMatchedTerms(Path termIndexPath, Path domainRepresentationTermsPath) throws JsonSyntaxException, JsonIOException, IOException {
+		if(!inputExists(termIndexPath) || !inputExists(domainRepresentationTermsPath)) {
 			throw new IllegalArgumentException();
 		}
+		Path outputPath = termIndexPath.getParent();
 		ensureOutputPathExists(outputPath);
 
 		List<ColumnDomain> datasetDomain = new ArrayList<>();
@@ -303,7 +331,6 @@ public class DomainSimilarity {
 			System.err.println(error);
 			throw new IllegalStateException(error);
 		}
-		Path termIndexPath = outputPath.resolve("term-index.txt.gz");
 		Set<String> datasetTerms = readTermsFromIndexFile(termIndexPath);
 		Set<String> matchedDatasetTerms = datasetTerms.stream()
 				.filter(datasetTerm -> datasetDomainTerms.contains(datasetTerm))
@@ -321,48 +348,50 @@ public class DomainSimilarity {
 		return new MatchingResult(matchedDatasetTerms.size(), datasetDomainTerms.size(), datasetTerms.size());
 	}
 
-	private static void writeSimilarityScoresToFile(List<Path> datasetOutputPaths, Path outputPath) throws IOException {
-		if(outputExists(outputPath)) {
-			return;
-		}
-		ZonedDateTime start = ZonedDateTime.now();
-		Files.writeString(outputPath, "dataset_name,domain_representation_type,domain_representation_size,dataset_size,matched,overlap_coefficient\n", createAndAppend);
-		for (Path datasetOutputPath : datasetOutputPaths) {
-			Path datasetSimilarityScoresPath = datasetOutputPath.resolve(DATASET_SIMILARITY_SCORES_CSV_NAME);
-			if(!inputExists(datasetSimilarityScoresPath)) {
-				continue;
+	private static Path combineDatasetSimilarityScoresInCsvFile(List<Path> datasetSimilarityScoresPaths, Path outputPath) throws IOException {
+		Path combinedSimilarityScoresPath = outputPath.resolve(EVALUATION_OUTPUT_ALL_SIMILARITY_SCORES_CSV);
+//				Path datasetSimilarityScoresPath = datasetOutputPath.resolve(DATASET_SIMILARITY_SCORES_CSV_NAME);
+		if(!outputExists(combinedSimilarityScoresPath)) {
+			ZonedDateTime start = ZonedDateTime.now();
+			Files.writeString(combinedSimilarityScoresPath, "dataset_name,domain_representation_type,domain_representation_size,dataset_size,matched,overlap_coefficient\n", createAndAppend);
+			for (Path datasetSimilarityScoresPath : datasetSimilarityScoresPaths) {
+				if(!inputExists(datasetSimilarityScoresPath)) {
+					continue;
+				}
+				String similarityScore = Files.readAllLines(datasetSimilarityScoresPath).stream()
+						.filter(line -> line.startsWith("precision,"))
+						.findAny()
+						.orElseThrow();
+				Files.writeString(combinedSimilarityScoresPath, datasetSimilarityScoresPath.getParent().getFileName().toString() + "," + similarityScore + "\n", createAndAppend);
 			}
-			String similarityScore = Files.readAllLines(datasetSimilarityScoresPath).stream()
-					.filter(line -> line.startsWith("precision,"))
-					.findAny()
-					.orElseThrow();
-			Files.writeString(outputPath, datasetOutputPath.getFileName().toString() + "," + similarityScore + "\n", createAndAppend);
+			logDuration(start, "writing precision similarity scores to a single file", outputPath);
 		}
-		logDuration(start, "writing all-terms similarity scores to a single file");
+		return combinedSimilarityScoresPath;
 	}
 
-	private static void discoverDatasetsSimilarToDomain(Path similarityScoresPath, Path outputPath) throws IOException {
-		if(outputExists(outputPath)) {
-			return;
+	private static Path discoverDatasetsSimilarToDomain(Path similarityScoresPath) throws IOException {
+		Path domainSimilarityResultPath = similarityScoresPath.getParent().resolve(EVALUATION_OUTPUT_DATASETS_FOCUSED_ON_DOMAIN);
+		if(!outputExists(domainSimilarityResultPath)) {
+			ZonedDateTime start = ZonedDateTime.now();
+			List<DatasetSimilarity> sortedByDescendingSimilarityScore = readDatasetSimilarityScores(similarityScoresPath);
+			Set<String> addedSimilarityScoreNames = addSimilarityScores(sortedByDescendingSimilarityScore);
+			Collections.sort(sortedByDescendingSimilarityScore, Comparator.comparingDouble(DatasetSimilarity::getSimilarityScore).reversed());
+			calculateConsecutiveDrops(sortedByDescendingSimilarityScore);
+			List<SimilarDatasetsGroup> groupedByConsecutiveSteepestDrop = groupDatasetsByConsecutiveDrop(sortedByDescendingSimilarityScore);
+			List<SimilarDatasetsGroup> selectedGroups = groupedByConsecutiveSteepestDrop.subList(0, groupedByConsecutiveSteepestDrop.size()-1);
+			List<DatasetSimilarity> datasetsSimilarToDomain = selectedGroups.stream()
+					.flatMap(group -> group.getSimilarDatasets().stream())
+					.filter(datasetSimilarity -> !addedSimilarityScoreNames.contains(datasetSimilarity.getDatasetName()))
+					.toList();
+			String groupHeader = "dataset_name,similarity_score\n";
+			Files.writeString(domainSimilarityResultPath, groupHeader, createAndAppend);
+			for(DatasetSimilarity dataset : datasetsSimilarToDomain) {
+				String datasetOutput = String.format("%s,%f\n", dataset.getDatasetName(), dataset.getSimilarityScore());
+				Files.writeString(domainSimilarityResultPath, datasetOutput, createAndAppend);
+			}
+			logDuration(start, "determining datasets that are considered similar to the domain", similarityScoresPath.getParent());
 		}
-		ZonedDateTime start = ZonedDateTime.now();
-		List<DatasetSimilarity> sortedByDescendingSimilarityScore = readDatasetSimilarityScores(similarityScoresPath);
-		Set<String> addedSimilarityScoreNames = addSimilarityScores(sortedByDescendingSimilarityScore);
-		Collections.sort(sortedByDescendingSimilarityScore, Comparator.comparingDouble(DatasetSimilarity::getSimilarityScore).reversed());
-		calculateConsecutiveDrops(sortedByDescendingSimilarityScore);
-		List<SimilarDatasetsGroup> groupedByConsecutiveSteepestDrop = groupDatasetsByConsecutiveDrop(sortedByDescendingSimilarityScore);
-		List<SimilarDatasetsGroup> selectedGroups = groupedByConsecutiveSteepestDrop.subList(0, groupedByConsecutiveSteepestDrop.size()-1);
-		List<DatasetSimilarity> datasetsSimilarToDomain = selectedGroups.stream()
-				.flatMap(group -> group.getSimilarDatasets().stream())
-				.filter(datasetSimilarity -> !addedSimilarityScoreNames.contains(datasetSimilarity.getDatasetName()))
-				.toList();
-		String groupHeader = "dataset_name,similarity_score\n";
-		Files.writeString(outputPath, groupHeader, createAndAppend);
-		for(DatasetSimilarity dataset : datasetsSimilarToDomain) {
-			String datasetOutput = String.format("%s,%f\n", dataset.getDatasetName(), dataset.getSimilarityScore());
-			Files.writeString(outputPath, datasetOutput, createAndAppend);
-		}
-		logDuration(start, "determining datasets that are considered similar to the domain");
+		return domainSimilarityResultPath;
 	}
 
 	private static Set<String> addSimilarityScores(List<DatasetSimilarity> sortedByDescendingSimilarityScore) {
@@ -456,231 +485,249 @@ public class DomainSimilarity {
 		}
 	}
 
-	private static void logDuration(ZonedDateTime startTime, String taskDescription) throws IOException {
+	private static void logDuration(ZonedDateTime startTime, String taskDescription, Path outputPath) throws IOException {
 		if(!LOG_DURATION) {
 			return;
 		}
+		Path durationLogPath = outputPath.resolve(EVALUATION_TASK_DURATIONS_CSV);
 		ZonedDateTime endTime = ZonedDateTime.now();
 		Duration duration = Duration.between(startTime, endTime);
-		Files.writeString(EVALUATION_TASK_DURATIONS_CSV, duration.toString()+ ",\"" + taskDescription + "\"\n", createAndAppend);
+		Files.writeString(durationLogPath, duration.toString()+ ",\"" + taskDescription + "\"\n", createAndAppend);
 	}
 
-	private static void generateColumnFiles(Path dataFolder, Path outputPath) {
+	private static Path generateColumnFiles(Path inputPath, Path outputPath) {
 		// ----------------------------------------------------------------
 	    // GENERATE COLUMN FILES
 	    // ----------------------------------------------------------------
 	    try {
-	        Path outputColumnsPath = outputPath.resolve("columns");
-	        if(outputExists(outputColumnsPath)) {
-				return;
-			}
-			new D4().columns(
-	                dataFolder.toFile(),
-	                outputPath.resolve("columns.tsv").toFile(),
-	                1000,
-	                6,
-	                true,
-	                outputColumnsPath.toFile()
-	        );
+	    	Path outputColumnsPath = outputPath.resolve(COLUMNS_DIR_NAME);
+	        if(!outputExists(outputColumnsPath)) {
+				new D4().columns(
+		                inputPath.toFile(),
+		                outputPath.resolve(COLUMNS_METADATA_FILE_NAME).toFile(),
+		                1000,
+		                6,
+		                true,
+		                outputColumnsPath.toFile()
+		        );
+	        }
+	        return outputColumnsPath;
 	    } catch (java.lang.InterruptedException | java.io.IOException ex) {
-	        LOGGER.log(Level.SEVERE, "Generating columns failed with exception: ", ex);
+	    	System.err.print("Generating columns failed with exception: ");
+	    	ex.printStackTrace();
 	        System.exit(-1);
 	    }
+	    return null;
 	}
 
-	private static void generateTermIndex(Path outputPath) {
+	private static Path generateTermIndex(Path columnsPath) {
 		// ----------------------------------------------------------------
 	    // GENERATE TERM INDEX
 	    // ----------------------------------------------------------------
 	    try {
-	        Path outputTermIndex = outputPath.resolve("term-index.txt.gz");
-	        if(outputExists(outputTermIndex)) {
-	        	return;
+	        Path outputTermIndex = columnsPath.getParent().resolve(TERM_INDEX_FILE_NAME);
+	        if(!outputExists(outputTermIndex)) {
+				new D4().termIndex(
+						columnsPath.toFile(),
+		                Threshold.getConstraint("GT0.5"),
+		                10000000,
+		                false,
+		                6,
+		                true,
+		                outputTermIndex.toFile()
+		        );
 	        }
-
-			new D4().termIndex(
-	                outputPath.resolve("columns").toFile(),
-	                Threshold.getConstraint("GT0.5"),
-	                10000000,
-	                false,
-	                6,
-	                true,
-	                outputTermIndex.toFile()
-	        );
+	        return outputTermIndex;
 	    } catch (java.lang.InterruptedException | java.io.IOException ex) {
-	        LOGGER.log(Level.SEVERE, "Generating term index failed with exception: ", ex);
+	    	System.err.print("Generating term index failed with exception: ");
+	    	ex.printStackTrace();
 	        System.exit(-1);
 	    }
+	    return null;
 	}
 
-	private static void generateEquivalenceClasses(Path outputPath) {
+	private static Path generateEquivalenceClasses(Path termIndexPath) {
 		// ----------------------------------------------------------------
 	    // GENERATE EQUIVALENCE CLASSES
 	    // ----------------------------------------------------------------
 	    try {
-	        Path outputEquivalenceClasses = outputPath.resolve("compressed-term-index.txt.gz");
-	        if(outputExists(outputEquivalenceClasses)) {
-	        	return;
+	        Path outputEquivalenceClasses = termIndexPath.getParent().resolve(EQUIVALENCE_CLASSES_FILE_NAME);
+	        if(!outputExists(outputEquivalenceClasses)) {
+				new D4().eqs(
+						termIndexPath.toFile(),
+		                true,
+		                outputEquivalenceClasses.toFile()
+		        );
 	        }
-			new D4().eqs(
-	                outputPath.resolve("term-index.txt.gz").toFile(),
-	                true,
-	                outputEquivalenceClasses.toFile()
-	        );
+	        return outputEquivalenceClasses;
 	    } catch (java.io.IOException ex) {
-	        LOGGER.log(Level.SEVERE, "Generating equivalence classes failed with exception: ", ex);
+	    	System.err.print("Generating equivalence classes failed with exception: ");
+	    	ex.printStackTrace();
 	        System.exit(-1);
 	    }
+	    return null;
 	}
 
-	private static void computeSignatures(Path outputPath, String simAlgo, String robustifier) {
+	private static Path computeSignatures(Path equivalenceClassesPath, String simAlgo, String robustifier) {
 		// ----------------------------------------------------------------
 	    // COMPUTE SIGNATURES
 	    // ----------------------------------------------------------------
 	    try {
-	        Path outputSignatures = outputPath.resolve("signatures.txt.gz");
-	        if(outputExists(outputSignatures)) {
-	        	return;
+	        Path outputSignatures = equivalenceClassesPath.getParent().resolve(SIGNATURES_FILE_NAME);
+	        if(!outputExists(outputSignatures)) {
+				new D4().signatures(
+						equivalenceClassesPath.toFile(),
+		                simAlgo,
+		                robustifier,
+		                true,
+		                false,
+		                D4Config.ROBUST_IGNORELAST.equals(robustifier), // ignore minor drops only when ignore-last robustifier is used
+		                6,
+		                true,
+		                new TelemetryPrinter(),
+		                outputSignatures.toFile()
+		        );
 	        }
-			new D4().signatures(
-	                outputPath.resolve("compressed-term-index.txt.gz").toFile(),
-	                simAlgo,
-	                robustifier,
-	                true,
-	                false,
-	                D4Config.ROBUST_IGNORELAST.equals(robustifier), // ignore minor drops only when ignore-last robustifier is used
-	                6,
-	                true,
-	                new TelemetryPrinter(),
-	                outputSignatures.toFile()
-	        );
+	        return outputSignatures;
 	    } catch (java.lang.InterruptedException | java.io.IOException ex) {
-	        LOGGER.log(Level.SEVERE, "Computing signatures failed with exception: ", ex);
+	    	System.err.print("Computing signatures failed with exception: ");
+	    	ex.printStackTrace();
 	        System.exit(-1);
 	    }
+	    return null;
 	}
 
-	private static void expandColumns(Path outputPath, String trimmer) {
+	private static Path expandColumns(Path equivalenceClassesPath, Path signaturesPath, String trimmer) {
 		// ----------------------------------------------------------------
 	    // EXPAND COLUMNS
 	    // ----------------------------------------------------------------
 	    try {
-	        Path outputExpandColumns = outputPath.resolve("expanded-columns.txt.gz");
-	        if(outputExists(outputExpandColumns)) {
-	        	return;
+	        Path outputExpandColumns = signaturesPath.getParent().resolve(EXPANDED_COLUMNS_FILE_NAME);
+	        if(!outputExists(outputExpandColumns)) {
+				new D4().expandColumns(
+						equivalenceClassesPath.toFile(),
+		                signaturesPath.toFile(),
+		                trimmer,
+		                Threshold.getConstraint("GT0.25"),
+		                5,
+		                new BigDecimal("0.05"),
+		                6,
+		                true,
+		                new TelemetryPrinter(),
+		                outputExpandColumns.toFile()
+		        );
 	        }
-			new D4().expandColumns(
-	                outputPath.resolve("compressed-term-index.txt.gz").toFile(),
-	                outputPath.resolve("signatures.txt.gz").toFile(),
-	                trimmer,
-	                Threshold.getConstraint("GT0.25"),
-	                5,
-	                new BigDecimal("0.05"),
-	                6,
-	                true,
-	                new TelemetryPrinter(),
-	                outputExpandColumns.toFile()
-	        );
+	        return outputExpandColumns;
 	    } catch (java.io.IOException ex) {
-	        LOGGER.log(Level.SEVERE, "Expanding columns failed with exception: ", ex);
+	    	System.err.print("Expanding columns failed with exception: ");
+	    	ex.printStackTrace();
 	        System.exit(-1);
 	    }
+	    return null;
 	}
 
-	private static void noExpandColumns(Path outputPath) {
+	private static Path noExpandColumns(Path equivalenceClassesPath) {
 		// ----------------------------------------------------------------
 	    // EXPAND COLUMNS
 	    // ----------------------------------------------------------------
 	    try {
-	        Path outputNoExpandColumns = outputPath.resolve("expanded-columns.txt.gz");
-	        if(outputExists(outputNoExpandColumns)) {
-	        	return;
+	        Path outputNoExpandColumns = equivalenceClassesPath.getParent().resolve(EXPANDED_COLUMNS_FILE_NAME);
+	        if(!outputExists(outputNoExpandColumns)) {
+				new D4().writeColumns(
+						equivalenceClassesPath.toFile(),
+		                true,
+		                outputNoExpandColumns.toFile()
+		        );
 	        }
-			new D4().writeColumns(
-	                outputPath.resolve("compressed-term-index.txt.gz").toFile(),
-	                true,
-	                outputNoExpandColumns.toFile()
-	        );
+	        return outputNoExpandColumns;
 	    } catch (java.io.IOException ex) {
-	        LOGGER.log(Level.SEVERE, "Non-expanding columns failed with exception: ", ex);
+	    	System.err.print("Non-expanding columns failed with exception: ");
+	    	ex.printStackTrace();
 	        System.exit(-1);
 	    }
+	    return null;
 	}
 
-	private static void discoverLocalDomains(Path outputPath) {
+	private static Path discoverLocalDomains(Path equivalenceClassesPath, Path signaturesPath, Path expandedColumnsPath) {
 		// ----------------------------------------------------------------
 	    // DISCOVER LOCAL DOMAINS
 	    // ----------------------------------------------------------------
 	    try {
-	        Path outputLocalDomains = outputPath.resolve("local-domains.txt.gz");
-	        if(outputExists(outputLocalDomains)) {
-	        	return;
+	        Path outputLocalDomains = expandedColumnsPath.getParent().resolve(LOCAL_DOMAINS_FILE_NAME);
+	        if(!outputExists(outputLocalDomains)) {
+				new D4().localDomains(
+		                equivalenceClassesPath.toFile(),
+		                expandedColumnsPath.toFile(),
+		                signaturesPath.toFile(),
+		                D4Config.TRIMMER_CONSERVATIVE,
+		                false,
+		                6,
+		                false,
+		                true,
+		                new TelemetryPrinter(),
+		                outputLocalDomains.toFile()
+		        );
 	        }
-			new D4().localDomains(
-	                outputPath.resolve("compressed-term-index.txt.gz").toFile(),
-	                outputPath.resolve("expanded-columns.txt.gz").toFile(),
-	                outputPath.resolve("signatures.txt.gz").toFile(),
-	                D4Config.TRIMMER_CONSERVATIVE,
-	                false,
-	                6,
-	                false,
-	                true,
-	                new TelemetryPrinter(),
-	                outputLocalDomains.toFile()
-	        );
+	        return outputLocalDomains;
 	    } catch (java.io.IOException ex) {
-	        LOGGER.log(Level.SEVERE, "Discovering local domains failed with exception: ", ex);
+	    	System.err.print("Discovering local domains failed with exception: ");
+	    	ex.printStackTrace();
 	        System.exit(-1);
 	    }
+	    return null;
 	}
 
-	private static void pruneToStrongDomains(Path outputPath) {
+	private static Path pruneToStrongDomains(Path equivalenceClassesPath, Path localDomainsPath) {
 		// ----------------------------------------------------------------
 	    // PRUNE STRONG DOMAINS
 	    // ----------------------------------------------------------------
 	    try {
-	        Path outputStrongDomains = outputPath.resolve("strong-domains.txt.gz");
-	        if(outputExists(outputStrongDomains)) {
-	        	return;
+	        Path outputStrongDomains = localDomainsPath.getParent().resolve(COLUMN_DOMAINS_INTERNAL_FILE_NAME);
+	        if(!outputExists(outputStrongDomains)) {
+				new D4().strongDomains(
+		                equivalenceClassesPath.toFile(),
+		                localDomainsPath.toFile(),
+		                Threshold.getConstraint("GT0.5"),
+		                Threshold.getConstraint("GT0.1"),
+		                new BigDecimal("0.25"),
+		                6,
+		                true,
+		                new TelemetryPrinter(),
+		                outputStrongDomains.toFile()
+		        );
 	        }
-			new D4().strongDomains(
-	                outputPath.resolve("compressed-term-index.txt.gz").toFile(),
-	                outputPath.resolve("local-domains.txt.gz").toFile(),
-	                Threshold.getConstraint("GT0.5"),
-	                Threshold.getConstraint("GT0.1"),
-	                new BigDecimal("0.25"),
-	                6,
-	                true,
-	                new TelemetryPrinter(),
-	                outputStrongDomains.toFile()
-	        );
+	        return outputStrongDomains;
 	    } catch (java.lang.InterruptedException | java.io.IOException ex) {
-	        LOGGER.log(Level.SEVERE, "Pruning strong domains failed with exception: ", ex);
+	    	System.err.print("Pruning strong domains failed with exception: ");
+	    	ex.printStackTrace();
 	        System.exit(-1);
 	    }
+	    return null;
 	}
 
-	private static void exportStrongDomains(Path outputPath) {
+	private static Path exportStrongDomains(Path termIndexPath, Path equivalenceClassesPath, Path columnDomainsInternalFormatPath) {
 		// ----------------------------------------------------------------
 	    // EXPORT
 	    // ----------------------------------------------------------------
 	    try {
-	        Path outputExport = outputPath.resolve(COLUMN_DOMAINS_DIR_NAME);
-	        if(outputExists(outputExport)) {
-	        	return;
+	        Path outputExport = columnDomainsInternalFormatPath.getParent().resolve(COLUMN_DOMAINS_DIR_NAME);
+	        if(!outputExists(outputExport)) {
+				new D4().exportStrongDomains(
+		                equivalenceClassesPath.toFile(),
+		                termIndexPath.toFile(),
+		                columnDomainsInternalFormatPath.getParent().resolve(COLUMNS_METADATA_FILE_NAME).toFile(),
+		                columnDomainsInternalFormatPath.toFile(),
+		                100,
+		                true,
+		                outputExport.toFile()
+		        );
 	        }
-			new D4().exportStrongDomains(
-	                outputPath.resolve("compressed-term-index.txt.gz").toFile(),
-	                outputPath.resolve("term-index.txt.gz").toFile(),
-	                outputPath.resolve("columns.tsv").toFile(),
-	                outputPath.resolve("strong-domains.txt.gz").toFile(),
-	                100,
-	                true,
-	                outputExport.toFile()
-	        );
+			return outputExport;
 	    } catch (java.io.IOException ex) {
-	        LOGGER.log(Level.SEVERE, "Exporting strong domains failed with exception: ", ex);
+	    	System.err.print("Exporting strong domains failed with exception: ");
+	    	ex.printStackTrace();
 	        System.exit(-1);
 	    }
+	    return null;
 	}
 }
