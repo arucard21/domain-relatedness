@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -48,11 +49,14 @@ public class DomainSimilarity {
 	public static final Path VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_ALL_TERMS = VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_DIR.resolve("all-terms");
 	public static final Path VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_NO_EXPAND = VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_DIR.resolve("no-expand");
 
-	public static final Path EVALUATION_AUTOMATED_OUTPUT_DIR= Paths.get("output-evaluation-automated");
-	public static final Path EVALUATION_AUTOMATED_OUTPUT_DOMAIN_REPRESENTATION = EVALUATION_AUTOMATED_OUTPUT_DIR.resolve("domain-representation");
+	public static final String EVALUATION_SELECTED_VARIANT = "precision";
+	public static final Path EVALUATION_MOVIE_OUTPUT_DIR= Paths.get("output-evaluation-movie");
+	public static final Path EVALUATION_FIFA_PLAYERS_OUTPUT_DIR= Paths.get("output-evaluation-fifa-players");
+	public static final String EVALUATION_DOMAIN_REPRESENTATION_DIR = "domain-representation";
 	public static final String EVALUATION_TASK_DURATIONS_CSV = "task_durations_evaluation.csv";
 	public static final String EVALUATION_OUTPUT_ALL_SIMILARITY_SCORES_CSV = "all_similarity_scores.csv";
 	public static final String EVALUATION_OUTPUT_DATASETS_FOCUSED_ON_DOMAIN = "datasets_focused_on_domain.csv";
+	public static final String EVALUATION_THRESHOLD_VALUES = "threshold_values.csv";
 
 	public static final String COLUMNS_DIR_NAME = "columns";
 	public static final String COLUMNS_METADATA_FILE_NAME = "columns.tsv";
@@ -65,6 +69,8 @@ public class DomainSimilarity {
 	public static final String COLUMN_DOMAINS_DIR_NAME = "domains";
 	public static final String DATASET_DOMAIN_DIR_NAME = "dataset-domain";
 	public static final String DATASET_SIMILARITY_SCORES_CSV_NAME = "similarity_scores.csv";
+	public static final String DATASET_RESULT_VALIDATION_FILE_NAME = "result_validation.json";
+	public static final String DATASET_RESULT_VALIDATION_ALL_SUBSETS_FILE_NAME = "result_validation_all_subsets.csv";
 
 	public static final String JACCARD_INDEX = D4Config.EQSIM_JI;
 	public static final String TERM_FREQUENCY_BASED_JACCARD = D4Config.EQSIM_TFICF;
@@ -73,10 +79,62 @@ public class DomainSimilarity {
 	public static final String TRIMMER_CONSERVATIVE = D4Config.TRIMMER_CONSERVATIVE;
 	public static final String TRIMMER_LIBERAL = D4Config.TRIMMER_LIBERAL;
 	public static final String TRIMMER_CENTRIST = D4Config.TRIMMER_CENTRIST;
-
 	public static final OpenOption[] createAndAppend = new OpenOption[]{StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.APPEND};
 
-	public static final Path DATASET_DOMAIN_INPUT_DATASETS_COMBINED = INPUT_DIR.resolve("domain-data");
+	public static final Map<String, Boolean> MOVIE_DOMAIN_LABEL = Map.ofEntries(
+			Map.entry("imdb", true),
+			Map.entry("tmdb", true),
+			Map.entry("indian", true),
+			Map.entry("movies", true),
+			Map.entry("netflix", true),
+			Map.entry("tmdb-350k", true),
+			Map.entry("rt", false),
+			Map.entry("steam", false),
+			Map.entry("datasets.data-cityofnewyork-us.education", false),
+			Map.entry("datasets.data-cityofnewyork-us.finance", false),
+			Map.entry("datasets.data-cityofnewyork-us.services", false),
+			Map.entry("2015 Flight Delays and Cancellations", false),
+			Map.entry("Dunnhumby - The Complete Journey", false),
+			Map.entry("Energy consumption of the Netherlands", false),
+			Map.entry("FIFA 22 complete player dataset", false),
+			Map.entry("FIFA worldcup 2018 Dataset", false),
+			Map.entry("FIFA Players & Stats", false),
+			Map.entry("Football Events", false),
+			Map.entry("International football results from 1872 to 2022	", false),
+			Map.entry("UCL 2021-22 Players Data", false),
+			Map.entry("Global Commodity Trade Statistics", false),
+			Map.entry("Instacart Market Basket Analysis", false),
+			Map.entry("NIPS Papers", false),
+			Map.entry("Uber Pickups in New York City", false),
+			Map.entry("US Baby Names", false));
+	public static final Map<String, Boolean> FIFA_PLAYERS_DOMAIN_LABEL = Map.ofEntries(
+			Map.entry("imdb", false),
+			Map.entry("tmdb", false),
+			Map.entry("indian", false),
+			Map.entry("movies", false),
+			Map.entry("netflix", false),
+			Map.entry("tmdb-350k", false),
+			Map.entry("rt", false),
+			Map.entry("steam", false),
+			Map.entry("datasets.data-cityofnewyork-us.education", false),
+			Map.entry("datasets.data-cityofnewyork-us.finance", false),
+			Map.entry("datasets.data-cityofnewyork-us.services", false),
+			Map.entry("2015 Flight Delays and Cancellations", false),
+			Map.entry("Dunnhumby - The Complete Journey", false),
+			Map.entry("Energy consumption of the Netherlands", false),
+			Map.entry("FIFA 22 complete player dataset", true),
+			Map.entry("FIFA Players & Stats", true),
+			Map.entry("FIFA worldcup 2018 Dataset", true),
+			Map.entry("Football Events", false),
+			Map.entry("International football results from 1872 to 2022	", false),
+			Map.entry("UCL 2021-22 Players Data", true),
+			Map.entry("Global Commodity Trade Statistics", false),
+			Map.entry("Instacart Market Basket Analysis", false),
+			Map.entry("NIPS Papers", false),
+			Map.entry("Uber Pickups in New York City", false),
+			Map.entry("US Baby Names", false));
+	public static final Path MOVIE_DOMAIN_INPUT_DATASETS_COMBINED = INPUT_DIR.resolve("domain-data-movies");
+	public static final Path FIFA_PLAYERS_DOMAIN_INPUT_DATASETS_COMBINED = INPUT_DIR.resolve("domain-data-fifa-players");
 	public static final List<Path> VARIATIONS_INPUT_DATASETS = List.of(
 			INPUT_DIR.resolve("indian"),
 			INPUT_DIR.resolve("movies"),
@@ -87,10 +145,34 @@ public class DomainSimilarity {
 			INPUT_DIR.resolve("datasets.data-cityofnewyork-us.education"),
 			INPUT_DIR.resolve("datasets.data-cityofnewyork-us.finance"),
 			INPUT_DIR.resolve("datasets.data-cityofnewyork-us.services"));
-	public static final List<Path> EVALUATION_INPUT_DATASETS = List.of(
-			INPUT_DIR.resolve("rt"),
-			INPUT_DIR.resolve("steam")
+	public static final List<Path> EVALUATION_INPUT_DATASETS_RANDOM_ORDER = List.of(
+			INPUT_DIR.resolve("steam"),
+			INPUT_DIR.resolve("2015 Flight Delays and Cancellations"),
+			INPUT_DIR.resolve("Energy consumption of the Netherlands"),
+			INPUT_DIR.resolve("netflix"),
+			INPUT_DIR.resolve("Global Commodity Trade Statistics"),
+			INPUT_DIR.resolve("International football results from 1872 to 2022"),
+			INPUT_DIR.resolve("UCL 2021-22 Players Data"),
+			INPUT_DIR.resolve("datasets.data-cityofnewyork-us.education"),
+			INPUT_DIR.resolve("datasets.data-cityofnewyork-us.services"),
+			INPUT_DIR.resolve("Dunnhumby - The Complete Journey"),
+			INPUT_DIR.resolve("Instacart Market Basket Analysis"),
+			INPUT_DIR.resolve("imdb"),
+			INPUT_DIR.resolve("tmdb"),
+			INPUT_DIR.resolve("FIFA worldcup 2018 Dataset"),
+			INPUT_DIR.resolve("Football Events"),
+			INPUT_DIR.resolve("indian"),
+			INPUT_DIR.resolve("FIFA Players & Stats"),
+			INPUT_DIR.resolve("US Baby Names"),
+			INPUT_DIR.resolve("Uber Pickups in New York City"),
+			INPUT_DIR.resolve("datasets.data-cityofnewyork-us.finance"),
+			INPUT_DIR.resolve("FIFA 22 complete player dataset"),
+			INPUT_DIR.resolve("movies"),
+			INPUT_DIR.resolve("NIPS Papers"),
+			INPUT_DIR.resolve("tmdb-350k"),
+			INPUT_DIR.resolve("rt")
 			);
+	private static double currentThreshold;
 
 	public static void main(String[] args) throws IOException {
 		runVariationsExperiments();
@@ -99,11 +181,11 @@ public class DomainSimilarity {
     }
 
 	private static void runVariationsExperiments() throws IOException {
-		Path precisionDatasetDomainPath = generateDomainRepresentation(DATASET_DOMAIN_INPUT_DATASETS_COMBINED, 	VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED, 	JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	false);
-		Path termFreqDatasetDomainPath = generateDomainRepresentation(DATASET_DOMAIN_INPUT_DATASETS_COMBINED, 	VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED_TF, TERM_FREQUENCY_BASED_JACCARD, 	ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	false);
-		Path accuracyDatasetDomainPath = generateDomainRepresentation(DATASET_DOMAIN_INPUT_DATASETS_COMBINED, 	VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_ACCURACY_OPTIMIZED, 	JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CENTRIST, 		false, 	true);
-		Path noExpandDatasetDomainPath = generateDomainRepresentation(DATASET_DOMAIN_INPUT_DATASETS_COMBINED, 	VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_NO_EXPAND, 				JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	true, 	false);
-		Path allTermsDatasetDomainPath = generateDomainRepresentation(DATASET_DOMAIN_INPUT_DATASETS_COMBINED, 	VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_ALL_TERMS, 				JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	true);
+		Path precisionDatasetDomainPath = generateDomainRepresentation(MOVIE_DOMAIN_INPUT_DATASETS_COMBINED, 	VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED, 	JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	false);
+		Path termFreqDatasetDomainPath = generateDomainRepresentation(MOVIE_DOMAIN_INPUT_DATASETS_COMBINED, 	VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED_TF, TERM_FREQUENCY_BASED_JACCARD, 	ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	false);
+		Path accuracyDatasetDomainPath = generateDomainRepresentation(MOVIE_DOMAIN_INPUT_DATASETS_COMBINED, 	VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_ACCURACY_OPTIMIZED, 	JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CENTRIST, 		false, 	true);
+		Path noExpandDatasetDomainPath = generateDomainRepresentation(MOVIE_DOMAIN_INPUT_DATASETS_COMBINED, 	VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_NO_EXPAND, 				JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	true, 	false);
+		Path allTermsDatasetDomainPath = generateDomainRepresentation(MOVIE_DOMAIN_INPUT_DATASETS_COMBINED, 	VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_ALL_TERMS, 				JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	true);
     	for(Path inputDataset: VARIATIONS_INPUT_DATASETS) {
     		calculateSimilarityToTargetDatasetForAllVariations(
     				inputDataset,
@@ -117,26 +199,138 @@ public class DomainSimilarity {
 	}
 
 	private static void runEvaluationExperiments() throws IOException {
-		Path evaluationDatasetDomainPath = generateDomainRepresentation(DATASET_DOMAIN_INPUT_DATASETS_COMBINED, EVALUATION_AUTOMATED_OUTPUT_DOMAIN_REPRESENTATION, JACCARD_INDEX, ROBUSTIFIER_LIBERAL, TRIMMER_CONSERVATIVE, false, false);
-		Path domainSimilarityResultPath = evaluateAccuracyForAutomatedUseCase(evaluationDatasetDomainPath);
-		System.out.println("The domain similarity results can be found in " + domainSimilarityResultPath.toString());
+		evaluateAccuracyForMovieDomain();
+//		evaluateAccuracyForFifaPlayersDomain();
 	}
 
-	private static Path evaluateAccuracyForAutomatedUseCase(Path datasetDomainPath) throws IOException {
-		return evaluateAccuracy(datasetDomainPath, EVALUATION_INPUT_DATASETS, EVALUATION_AUTOMATED_OUTPUT_DIR);
+	private static void evaluateAccuracyForMovieDomain() throws IOException {
+		evaluateAccuracyForDatasetDomain(MOVIE_DOMAIN_INPUT_DATASETS_COMBINED, MOVIE_DOMAIN_LABEL, EVALUATION_MOVIE_OUTPUT_DIR);
 	}
 
-	private static Path evaluateAccuracy(Path datasetDomainPath, List<Path> inputDatasets, Path outputPath) throws IOException {
+	private static void evaluateAccuracyForFifaPlayersDomain() throws IOException {
+		evaluateAccuracyForDatasetDomain(FIFA_PLAYERS_DOMAIN_INPUT_DATASETS_COMBINED, FIFA_PLAYERS_DOMAIN_LABEL, EVALUATION_FIFA_PLAYERS_OUTPUT_DIR);
+	}
+
+	private static void evaluateAccuracyForDatasetDomain(Path domainDatasetsCombinedPath, Map<String, Boolean> domainTruth, Path outputPath) throws IOException {
+		Path domainRepresentationPath = outputPath.resolve(EVALUATION_DOMAIN_REPRESENTATION_DIR);
+		Path evaluationMovieDomainPath = generateDomainRepresentation(domainDatasetsCombinedPath, domainRepresentationPath, JACCARD_INDEX, ROBUSTIFIER_LIBERAL, TRIMMER_CONSERVATIVE, false, false);
+		ResultValidation resultValidationMovieDomain = evaluateAccuracy(evaluationMovieDomainPath, domainTruth, EVALUATION_INPUT_DATASETS_RANDOM_ORDER, outputPath);
+		System.out.println("For the domain from: " + domainDatasetsCombinedPath.getFileName().toString());
+		System.out.println("Accuracy: "+resultValidationMovieDomain.getAccuracy());
+		System.out.println("Precision: "+resultValidationMovieDomain.getPrecision());
+		System.out.println("Recall: "+resultValidationMovieDomain.getRecall());
+		System.out.println("Lowest domain similarity score: "+resultValidationMovieDomain.getLowestDomainSimilarityScore());
+		System.out.println("Highest non-domain similarity score: "+resultValidationMovieDomain.getHighestNonDomainSimilarityScore());
+		System.out.println("Domain scores exceed non-domain scores: "+resultValidationMovieDomain.isDomainScoresExceedNonDomain());
+		System.out.println("Domain range size: "+resultValidationMovieDomain.getDomainRangeSize());
+		System.out.println("Non-domain range size: "+resultValidationMovieDomain.getNonDomainRangeSize());
+		System.out.println("");
+	}
+
+
+	private static ResultValidation evaluateAccuracy(Path datasetDomainPath, Map<String, Boolean> domainTruth, List<Path> inputDatasets, Path outputPath) throws IOException {
 		List<Path> datasetSimilarityScorePaths = new ArrayList<>();
 		for(Path inputDataset: inputDatasets) {
 			Path termIndexPath = generateTargetDatasetTermIndex(inputDataset, outputPath);
 			Path similarityScoresCsvPath = termIndexPath.getParent().resolve(DATASET_SIMILARITY_SCORES_CSV_NAME);
-			Path matchingResultPath = calculateSimilarityToTargetDatasetForDomainRepresentation(termIndexPath, datasetDomainPath);
-			writeSimilarityScoreToCsvFile(inputDataset.getFileName().toString(), matchingResultPath, similarityScoresCsvPath);
+			MatchingResult matchingResult = calculateSimilarityToTargetDatasetForDomainRepresentation(termIndexPath, datasetDomainPath);
+			writeSingleSimilarityScoreToCsvFile(EVALUATION_SELECTED_VARIANT, matchingResult, similarityScoresCsvPath);
 			datasetSimilarityScorePaths.add(similarityScoresCsvPath);
     	}
-		Path combinedSimilarityScoresPath = combineDatasetSimilarityScoresInCsvFile(datasetSimilarityScorePaths, outputPath);
-    	return discoverDatasetsSimilarToDomain(combinedSimilarityScoresPath);
+		List<DatasetSimilarity> allSimilarityScores = combineDatasetSimilarityScoresInCsvFile(datasetSimilarityScorePaths, outputPath);
+    	ResultValidation resultValidationOriginalOrder = evaluateSimilarityScores(domainTruth, allSimilarityScores, outputPath);
+    	evaluateAllSubsets(domainTruth, allSimilarityScores, outputPath);
+    	return resultValidationOriginalOrder;
+	}
+
+	private static void evaluateAllSubsets(Map<String, Boolean> domainTruth, List<DatasetSimilarity> allSimilarityScores, Path outputPath) throws IOException {
+		Path resultPath = outputPath.resolve(DATASET_RESULT_VALIDATION_ALL_SUBSETS_FILE_NAME);
+		if(resultPath.toFile().exists()) {
+			return;
+		}
+		else {
+			String csvheader = "dataset_amount,accuracy,precision,recall,negative_precision,negative_recall,threshold\n";
+			Files.writeString(resultPath, csvheader, createAndAppend);
+		}
+		for(int i = 1; i <= allSimilarityScores.size(); i++) {
+			ResultValidation resultValidation = evaluateSimilarityScores(domainTruth, allSimilarityScores.subList(0, i), null);
+			String csvEntry = String.format("%d,%f,%f,%f,%f,%f,%f\n",
+					i,
+					resultValidation.getAccuracy(),
+					resultValidation.getPrecision(),
+					resultValidation.getRecall(),
+					resultValidation.getNegPrecision(),
+					resultValidation.getNegRecall(),
+					currentThreshold);
+			Files.writeString(resultPath, csvEntry, createAndAppend);
+		}
+	}
+
+	private static ResultValidation evaluateSimilarityScores(Map<String, Boolean> domainTruth, List<DatasetSimilarity> allSimilarityScores, Path outputPath) throws IOException {
+		Set<String> similarDatasets = discoverDatasetsSimilarToDomain(allSimilarityScores, outputPath);
+    	ResultValidation resultValidation = validateResults(domainTruth, allSimilarityScores, similarDatasets, outputPath);
+		return resultValidation;
+	}
+
+	private static ResultValidation validateResults(Map<String, Boolean> domainTruth, List<DatasetSimilarity> similarityScores, Set<String> similarDatasets, Path outputPath) throws IOException {
+		Path resultValidationPath = outputPath == null ? null : outputPath.resolve(DATASET_RESULT_VALIDATION_FILE_NAME);
+		if(resultValidationPath != null && resultValidationPath.toFile().exists()) {
+			try(Reader reader = Files.newBufferedReader(resultValidationPath)){
+		    	return new Gson().fromJson(reader, ResultValidation.class);
+	    	}
+		}
+
+		int truePositives = 0;
+		int falsePositives = 0;
+		int trueNegatives = 0;
+		int falseNegatives = 0;
+		double highestDomainScore = -1;
+		double lowestDomainScore = Double.MAX_VALUE;
+		double highestNonDomainScore = Double.MAX_VALUE;
+		double lowestNonDomainScore = -1;
+		for(DatasetSimilarity dataset : similarityScores) {
+			String datasetName = dataset.getDatasetName();
+			double datasetSimilarityScore = dataset.getSimilarityScore();
+			boolean isSimilarTruth = domainTruth.get(datasetName);
+			if(isSimilarTruth) {
+				if(datasetSimilarityScore > highestDomainScore) {
+					highestDomainScore = datasetSimilarityScore;
+				}
+				if(datasetSimilarityScore < lowestDomainScore) {
+					lowestDomainScore = datasetSimilarityScore;
+				}
+			}
+			else {
+				if(datasetSimilarityScore > highestNonDomainScore) {
+					highestNonDomainScore = datasetSimilarityScore;
+				}
+				if(datasetSimilarityScore < lowestNonDomainScore) {
+					lowestNonDomainScore = datasetSimilarityScore;
+				}
+			}
+
+			boolean isSimilar = similarDatasets.contains(datasetName);
+			if(isSimilarTruth && isSimilar) {
+				truePositives++;
+			}
+			else if(isSimilarTruth && !isSimilar) {
+				falseNegatives++;
+			}
+			else if(!isSimilarTruth && isSimilar) {
+				falsePositives++;
+			}
+			else if(!isSimilarTruth && !isSimilar) {
+				trueNegatives++;
+			}
+
+		}
+		ResultValidation resultValidation = new ResultValidation(truePositives, falsePositives, trueNegatives, falseNegatives, lowestDomainScore, highestDomainScore, lowestNonDomainScore, highestNonDomainScore);
+		if(resultValidationPath != null) {
+			try(Writer writer = Files.newBufferedWriter(resultValidationPath)){
+		    	new GsonBuilder().setPrettyPrinting().create().toJson(resultValidation, writer);
+	    	}
+		}
+		return resultValidation;
 	}
 
 	private static Path generateDomainRepresentation(Path domainRepresentativeDatasetPath, Path outputPath, String simAlgo, String robustifier, String trimmer, boolean noExpand, boolean allTerms) throws IOException {
@@ -224,7 +418,7 @@ public class DomainSimilarity {
 	}
 
 	private static boolean outputExists(Path outputPath) {
-		if(outputPath.toFile().exists()) {
+		if(outputPath != null && outputPath.toFile().exists()) {
 			System.out.println(outputPath.toString() + " already exists. Skipping this step.");
 			return true;
 		}
@@ -238,7 +432,7 @@ public class DomainSimilarity {
 		Path similarityScoresCsvPath = termIndexPath.getParent().resolve(DATASET_SIMILARITY_SCORES_CSV_NAME);
 		if(!outputExists(similarityScoresCsvPath)) {
 			for(Path domainRepresentationVariationPath: domainRepresentationVariationPaths) {
-				Path matchingResultPath = calculateSimilarityToTargetDatasetForDomainRepresentation(termIndexPath, domainRepresentationVariationPath);
+				MatchingResult matchingResultPath = calculateSimilarityToTargetDatasetForDomainRepresentation(termIndexPath, domainRepresentationVariationPath);
 				writeSimilarityScoreToCsvFile(
 						domainRepresentationVariationPath.getParent().getFileName().toString(),
 						matchingResultPath,
@@ -248,24 +442,25 @@ public class DomainSimilarity {
 		return similarityScoresCsvPath;
 	}
 
-	private static void writeSimilarityScoreToCsvFile(String name, Path matchingResultPath, Path similarityScoresCsvPath) throws IOException {
-		if(!inputExists(matchingResultPath)) {
-			throw new IllegalArgumentException(String.format("The input file containing matching results %s does not exist.", matchingResultPath.toString()));
+	private static void writeSingleSimilarityScoreToCsvFile(String name, MatchingResult matchingResult, Path similarityScoresCsvPath) throws IOException {
+		if(similarityScoresCsvPath.toFile().exists()) {
+			return;
 		}
+		writeSimilarityScoreToCsvFile(name, matchingResult, similarityScoresCsvPath);
+	}
+
+	private static void writeSimilarityScoreToCsvFile(String name, MatchingResult matchingResult, Path similarityScoresCsvPath) throws IOException {
 		if(!similarityScoresCsvPath.toFile().exists()) {
 			Files.writeString(similarityScoresCsvPath, "domain_representation_type,domain_representation_size,dataset_size,matched,overlap_coefficient\n", createAndAppend);
 		}
-		try(Reader reader = Files.newBufferedReader(matchingResultPath)){
-			MatchingResult matchingResult = new Gson().fromJson(reader, MatchingResult.class);
-			String csvOutput = String.format(
-					"%s,%d,%d,%d,%f\n",
-					name,
-					matchingResult.getDomainRepresentationSize(),
-					matchingResult.getDatasetSize(),
-					matchingResult.getMatched(),
-					matchingResult.getSimilarityScore());
-			Files.writeString(similarityScoresCsvPath, csvOutput, createAndAppend);
-		}
+		String csvOutput = String.format(
+				"%s,%d,%d,%d,%f\n",
+				name,
+				matchingResult.getDomainRepresentationSize(),
+				matchingResult.getDatasetSize(),
+				matchingResult.getMatched(),
+				matchingResult.getSimilarityScore());
+		Files.writeString(similarityScoresCsvPath, csvOutput, createAndAppend);
 	}
 
 	private static Path generateTargetDatasetTermIndex(Path inputDataset, Path outputDirPath) throws IOException {
@@ -278,7 +473,7 @@ public class DomainSimilarity {
 		return termIndexPath;
 	}
 
-	private static Path calculateSimilarityToTargetDatasetForDomainRepresentation(Path termIndexPath, Path datasetDomainPath) throws IOException {
+	private static MatchingResult calculateSimilarityToTargetDatasetForDomainRepresentation(Path termIndexPath, Path datasetDomainPath) throws IOException {
 		if(!inputExists(termIndexPath)) {
 			throw new IllegalArgumentException(String.format("The input dataset %s does not exist.", termIndexPath.toString()));
 		}
@@ -286,7 +481,10 @@ public class DomainSimilarity {
 		ensureOutputPathExists(outputPath);
 		Path matchingResultPath = outputPath.resolve(String.format("matching_result_%s_%s.json", termIndexPath.getParent().getFileName().toString(), datasetDomainPath.getParent().getFileName().toString()));
 		if(outputExists(matchingResultPath)) {
-			return matchingResultPath;
+			try(Reader reader = Files.newBufferedReader(matchingResultPath)){
+				MatchingResult existingMatchingResult = new Gson().fromJson(reader, MatchingResult.class);
+				return existingMatchingResult;
+			}
 		}
 		ZonedDateTime start = ZonedDateTime.now();
 		MatchingResult matchingResult = countTargetDatasetMatchedTerms(termIndexPath, datasetDomainPath);
@@ -299,7 +497,7 @@ public class DomainSimilarity {
 				start,
 				"calculating similarity score for " + termIndexPath.getParent().toString() + " using the " + datasetDomainPath.getParent() + " domain representation",
 				termIndexPath.getParent().getParent());
-		return matchingResultPath;
+		return matchingResult;
 	}
 
 	private static Path convertDatasetInputPathToOutputPath(Path inputDataset, Path outputDirPath) {
@@ -348,50 +546,62 @@ public class DomainSimilarity {
 		return new MatchingResult(matchedDatasetTerms.size(), datasetDomainTerms.size(), datasetTerms.size());
 	}
 
-	private static Path combineDatasetSimilarityScoresInCsvFile(List<Path> datasetSimilarityScoresPaths, Path outputPath) throws IOException {
+	private static List<DatasetSimilarity> combineDatasetSimilarityScoresInCsvFile(List<Path> datasetSimilarityScoresPaths, Path outputPath) throws IOException {
 		Path combinedSimilarityScoresPath = outputPath.resolve(EVALUATION_OUTPUT_ALL_SIMILARITY_SCORES_CSV);
-//				Path datasetSimilarityScoresPath = datasetOutputPath.resolve(DATASET_SIMILARITY_SCORES_CSV_NAME);
-		if(!outputExists(combinedSimilarityScoresPath)) {
+		if(outputExists(combinedSimilarityScoresPath)) {
+			return readDatasetSimilarityScores(combinedSimilarityScoresPath);
+		}
+		else {
+			List<DatasetSimilarity> datasetSimilarityScores = new ArrayList<>();
 			ZonedDateTime start = ZonedDateTime.now();
 			Files.writeString(combinedSimilarityScoresPath, "dataset_name,domain_representation_type,domain_representation_size,dataset_size,matched,overlap_coefficient\n", createAndAppend);
 			for (Path datasetSimilarityScoresPath : datasetSimilarityScoresPaths) {
 				if(!inputExists(datasetSimilarityScoresPath)) {
 					continue;
 				}
-				String similarityScore = Files.readAllLines(datasetSimilarityScoresPath).stream()
-						.filter(line -> line.startsWith("precision,"))
+				String datasetResult = Files.readAllLines(datasetSimilarityScoresPath).stream()
+						.filter(line -> line.startsWith(EVALUATION_SELECTED_VARIANT+","))
 						.findAny()
 						.orElseThrow();
-				Files.writeString(combinedSimilarityScoresPath, datasetSimilarityScoresPath.getParent().getFileName().toString() + "," + similarityScore + "\n", createAndAppend);
+				String similarityScore = datasetResult.split(",")[4];
+				String datasetName = datasetSimilarityScoresPath.getParent().getFileName().toString();
+				datasetSimilarityScores.add(new DatasetSimilarity(datasetName, Double.valueOf(similarityScore)));
+				Files.writeString(combinedSimilarityScoresPath, datasetName + "," + datasetResult + "\n", createAndAppend);
 			}
 			logDuration(start, "writing precision similarity scores to a single file", outputPath);
+			return datasetSimilarityScores;
 		}
-		return combinedSimilarityScoresPath;
 	}
 
-	private static Path discoverDatasetsSimilarToDomain(Path similarityScoresPath) throws IOException {
-		Path domainSimilarityResultPath = similarityScoresPath.getParent().resolve(EVALUATION_OUTPUT_DATASETS_FOCUSED_ON_DOMAIN);
-		if(!outputExists(domainSimilarityResultPath)) {
+	private static Set<String> discoverDatasetsSimilarToDomain(List<DatasetSimilarity> similarityScores, Path outputPath) throws IOException {
+		Path domainSimilarityResultPath = outputPath == null ? null : outputPath.resolve(EVALUATION_OUTPUT_DATASETS_FOCUSED_ON_DOMAIN);
+		Set<DatasetSimilarity> similarDatasets;
+		if(outputExists(domainSimilarityResultPath)) {
+			similarDatasets = readSimilarDataset(domainSimilarityResultPath);
+		}
+		else {
 			ZonedDateTime start = ZonedDateTime.now();
-			List<DatasetSimilarity> sortedByDescendingSimilarityScore = readDatasetSimilarityScores(similarityScoresPath);
+			List<DatasetSimilarity> sortedByDescendingSimilarityScore = new ArrayList<>(similarityScores);
 			Set<String> addedSimilarityScoreNames = addSimilarityScores(sortedByDescendingSimilarityScore);
 			Collections.sort(sortedByDescendingSimilarityScore, Comparator.comparingDouble(DatasetSimilarity::getSimilarityScore).reversed());
 			calculateConsecutiveDrops(sortedByDescendingSimilarityScore);
-			List<SimilarDatasetsGroup> groupedByConsecutiveSteepestDrop = groupDatasetsByConsecutiveDrop(sortedByDescendingSimilarityScore);
+			List<SimilarDatasetsGroup> groupedByConsecutiveSteepestDrop = groupDatasetsByConsecutiveDrop(sortedByDescendingSimilarityScore, outputPath);
 			List<SimilarDatasetsGroup> selectedGroups = groupedByConsecutiveSteepestDrop.subList(0, groupedByConsecutiveSteepestDrop.size()-1);
-			List<DatasetSimilarity> datasetsSimilarToDomain = selectedGroups.stream()
+			similarDatasets = selectedGroups.stream()
 					.flatMap(group -> group.getSimilarDatasets().stream())
 					.filter(datasetSimilarity -> !addedSimilarityScoreNames.contains(datasetSimilarity.getDatasetName()))
-					.toList();
-			String groupHeader = "dataset_name,similarity_score\n";
-			Files.writeString(domainSimilarityResultPath, groupHeader, createAndAppend);
-			for(DatasetSimilarity dataset : datasetsSimilarToDomain) {
-				String datasetOutput = String.format("%s,%f\n", dataset.getDatasetName(), dataset.getSimilarityScore());
-				Files.writeString(domainSimilarityResultPath, datasetOutput, createAndAppend);
+					.collect(Collectors.toSet());
+			if(domainSimilarityResultPath != null) {
+				String groupHeader = "dataset_name,similarity_score\n";
+				Files.writeString(domainSimilarityResultPath, groupHeader, createAndAppend);
+				for(DatasetSimilarity dataset : similarDatasets) {
+					String datasetOutput = String.format("%s,%f\n", dataset.getDatasetName(), dataset.getSimilarityScore());
+					Files.writeString(domainSimilarityResultPath, datasetOutput, createAndAppend);
+				}
 			}
-			logDuration(start, "determining datasets that are considered similar to the domain", similarityScoresPath.getParent());
+			logDuration(start, "determining datasets that are considered similar to the domain", outputPath);
 		}
-		return domainSimilarityResultPath;
+		return similarDatasets.stream().map(DatasetSimilarity::getDatasetName).collect(Collectors.toSet());
 	}
 
 	private static Set<String> addSimilarityScores(List<DatasetSimilarity> sortedByDescendingSimilarityScore) {
@@ -426,6 +636,20 @@ public class DomainSimilarity {
 		return similarityScores;
 	}
 
+	private static Set<DatasetSimilarity> readSimilarDataset(Path similarDatasetsPath) throws IOException {
+		Set<DatasetSimilarity> similarDatasets = new HashSet<>();
+
+		List<String> allLines = Files.readAllLines(similarDatasetsPath);
+		allLines.remove(0); // remove header line
+		allLines.forEach(line -> {
+			String[] values = line.split(",");
+			String dataset = values[0];
+			double score = Double.valueOf(values[values.length-1]);
+			similarDatasets.add(new DatasetSimilarity(dataset, score));
+		});
+		return similarDatasets;
+	}
+
 	private static void calculateConsecutiveDrops(List<DatasetSimilarity> sortedByDescendingSimilarityScore) {
 		for(int i = 0; i < sortedByDescendingSimilarityScore.size(); i++) {
 			DatasetSimilarity currentScore = sortedByDescendingSimilarityScore.get(i);
@@ -440,13 +664,14 @@ public class DomainSimilarity {
 		}
 	}
 
-	private static List<SimilarDatasetsGroup> groupDatasetsByConsecutiveDrop(List<DatasetSimilarity> sortedByDescendingSimilarityScore) {
+	private static List<SimilarDatasetsGroup> groupDatasetsByConsecutiveDrop(List<DatasetSimilarity> sortedByDescendingSimilarityScore, Path outputPath) throws IOException {
 		List<SimilarDatasetsGroup> groupedByConsecutiveDrop = new ArrayList<>();
 		List<DatasetSimilarity> validDropsSortedDescending = new ArrayList<>(sortedByDescendingSimilarityScore.subList(1, sortedByDescendingSimilarityScore.size()));
 		Collections.sort(validDropsSortedDescending, Comparator.comparingDouble(DatasetSimilarity::getConsecutiveDrop).reversed());
 		double secondHighestDrop = validDropsSortedDescending.get(1).getConsecutiveDrop();
 		double secondLowestDrop = validDropsSortedDescending.get(validDropsSortedDescending.size()-2).getConsecutiveDrop();
 		double dropThreshold = (secondHighestDrop + secondLowestDrop)/2d;
+		currentThreshold = dropThreshold;
 		for(DatasetSimilarity score : sortedByDescendingSimilarityScore) {
 			if(groupedByConsecutiveDrop.isEmpty() || score.getConsecutiveDrop() > dropThreshold) {
 				SimilarDatasetsGroup group = new SimilarDatasetsGroup(new ArrayList<>());
@@ -487,6 +712,9 @@ public class DomainSimilarity {
 
 	private static void logDuration(ZonedDateTime startTime, String taskDescription, Path outputPath) throws IOException {
 		if(!LOG_DURATION) {
+			return;
+		}
+		if(outputPath == null) {
 			return;
 		}
 		Path durationLogPath = outputPath.resolve(EVALUATION_TASK_DURATIONS_CSV);

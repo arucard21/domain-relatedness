@@ -12,6 +12,5 @@ public class SimilarDatasetsGroup {
 
 	public List<DatasetSimilarity> getSimilarDatasets() {
 		return similarDatasets;
-
 	}
 }
