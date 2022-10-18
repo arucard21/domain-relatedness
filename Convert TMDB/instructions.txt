@@ -1,0 +1,13 @@
+Convert TMDB JSON files to TSV with jq and Python Pandas
+From the directory containing the movies and series folder from the TMDB dataset, each containing JSON files, run:
+	touch movies.json
+	find movies -maxdepth 1 -iname "movie_*.json" -exec cat {} >> movies.json \;
+	jq -n "[inputs]" movies.json > movies_list.json
+	touch series.json
+	find series -maxdepth 1 -iname "series_*.json" -exec cat {} >> series.json \;
+	jq -n "[inputs]" series.json > series_list.json
+	mkdir tsv
+	./convert_tmdb.py
+	gzip tsv/*.tsv
+The converted TSV files are in the tsv folder. When the JSON contained an array as value for a field, this is converted to a separate TSV file. Aside from movies and series, 10 more TSV files have been created like this.
+Since the original columns for these additional tables are removed during the conversion, the link between them and the movies and series is lost. This should be okay since we only need to ensure that all terms are present in the dataset as separate column values. 
