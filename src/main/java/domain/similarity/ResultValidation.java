@@ -14,7 +14,6 @@ public class ResultValidation {
 	private final double highestDomainSimilarityScore;
 	private final double lowestNonDomainSimilarityScore;
 	private final double highestNonDomainSimilarityScore;
-	private final boolean domainScoresExceedNonDomain;
 	private final double domainRangeSize;
 	private final double nonDomainRangeSize;
 
@@ -23,8 +22,7 @@ public class ResultValidation {
 		this.highestDomainSimilarityScore = highestDomainSimilarityScore;
 		this.lowestNonDomainSimilarityScore = lowestNonDomainSimilarityScore;
 		this.highestNonDomainSimilarityScore = highestNonDomainSimilarityScore;
-		this.domainScoresExceedNonDomain = lowestDomainSimilarityScore > highestNonDomainSimilarityScore;
-		this.domainRangeSize = highestDomainSimilarityScore = lowestDomainSimilarityScore;
+		this.domainRangeSize = highestDomainSimilarityScore - lowestDomainSimilarityScore;
 		this.nonDomainRangeSize = highestNonDomainSimilarityScore - lowestNonDomainSimilarityScore;
 
 		this.truePositives = truePositives;
@@ -87,10 +85,6 @@ public class ResultValidation {
 	public double getHighestNonDomainSimilarityScore() {
 		return highestNonDomainSimilarityScore;
 	}
-	public boolean isDomainScoresExceedNonDomain() {
-		return domainScoresExceedNonDomain;
-	}
-
 	public double getDomainRangeSize() {
 		return domainRangeSize;
 	}

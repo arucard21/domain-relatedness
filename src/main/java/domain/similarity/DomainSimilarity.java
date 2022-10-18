@@ -36,7 +36,7 @@ import org.opendata.db.term.TermConsumer;
 import org.opendata.db.term.TermIndexReader;
 
 public class DomainSimilarity {
-	public static boolean LOG_MATCHED_TERMS = false;
+	public static boolean LOG_MATCHED_TERMS = true;
 	public static boolean LOG_DURATION = false;
 
 	public static final Path INPUT_DIR = Paths.get("input");
@@ -93,16 +93,12 @@ public class DomainSimilarity {
 			Map.entry("datasets.data-cityofnewyork-us.education", false),
 			Map.entry("datasets.data-cityofnewyork-us.finance", false),
 			Map.entry("datasets.data-cityofnewyork-us.services", false),
-			Map.entry("2015 Flight Delays and Cancellations", false),
-			Map.entry("Dunnhumby - The Complete Journey", false),
 			Map.entry("Energy consumption of the Netherlands", false),
 			Map.entry("FIFA 22 complete player dataset", false),
-			Map.entry("FIFA worldcup 2018 Dataset", false),
+			Map.entry("Fifa Players Ratings", false),
 			Map.entry("FIFA Players & Stats", false),
 			Map.entry("Football Events", false),
-			Map.entry("International football results from 1872 to 2022	", false),
-			Map.entry("UCL 2021-22 Players Data", false),
-			Map.entry("Global Commodity Trade Statistics", false),
+			Map.entry("FIFA23 OFFICIAL DATASET", false),
 			Map.entry("Instacart Market Basket Analysis", false),
 			Map.entry("NIPS Papers", false),
 			Map.entry("Uber Pickups in New York City", false),
@@ -119,16 +115,12 @@ public class DomainSimilarity {
 			Map.entry("datasets.data-cityofnewyork-us.education", false),
 			Map.entry("datasets.data-cityofnewyork-us.finance", false),
 			Map.entry("datasets.data-cityofnewyork-us.services", false),
-			Map.entry("2015 Flight Delays and Cancellations", false),
-			Map.entry("Dunnhumby - The Complete Journey", false),
 			Map.entry("Energy consumption of the Netherlands", false),
 			Map.entry("FIFA 22 complete player dataset", true),
 			Map.entry("FIFA Players & Stats", true),
-			Map.entry("FIFA worldcup 2018 Dataset", true),
+			Map.entry("Fifa Players Ratings", true),
 			Map.entry("Football Events", false),
-			Map.entry("International football results from 1872 to 2022	", false),
-			Map.entry("UCL 2021-22 Players Data", true),
-			Map.entry("Global Commodity Trade Statistics", false),
+			Map.entry("FIFA23 OFFICIAL DATASET", true),
 			Map.entry("Instacart Market Basket Analysis", false),
 			Map.entry("NIPS Papers", false),
 			Map.entry("Uber Pickups in New York City", false),
@@ -147,19 +139,15 @@ public class DomainSimilarity {
 			INPUT_DIR.resolve("datasets.data-cityofnewyork-us.services"));
 	public static final List<Path> EVALUATION_INPUT_DATASETS_RANDOM_ORDER = List.of(
 			INPUT_DIR.resolve("steam"),
-			INPUT_DIR.resolve("2015 Flight Delays and Cancellations"),
 			INPUT_DIR.resolve("Energy consumption of the Netherlands"),
 			INPUT_DIR.resolve("netflix"),
-			INPUT_DIR.resolve("Global Commodity Trade Statistics"),
-			INPUT_DIR.resolve("International football results from 1872 to 2022"),
-			INPUT_DIR.resolve("UCL 2021-22 Players Data"),
+			INPUT_DIR.resolve("FIFA23 OFFICIAL DATASET"),
 			INPUT_DIR.resolve("datasets.data-cityofnewyork-us.education"),
 			INPUT_DIR.resolve("datasets.data-cityofnewyork-us.services"),
-			INPUT_DIR.resolve("Dunnhumby - The Complete Journey"),
 			INPUT_DIR.resolve("Instacart Market Basket Analysis"),
 			INPUT_DIR.resolve("imdb"),
 			INPUT_DIR.resolve("tmdb"),
-			INPUT_DIR.resolve("FIFA worldcup 2018 Dataset"),
+			INPUT_DIR.resolve("Fifa Players Ratings"),
 			INPUT_DIR.resolve("Football Events"),
 			INPUT_DIR.resolve("indian"),
 			INPUT_DIR.resolve("FIFA Players & Stats"),
@@ -176,7 +164,7 @@ public class DomainSimilarity {
 
 	public static void main(String[] args) throws IOException {
 		runVariationsExperiments();
-		LOG_DURATION = true;
+//		LOG_DURATION = true;
 		runEvaluationExperiments();
     }
 
@@ -200,7 +188,7 @@ public class DomainSimilarity {
 
 	private static void runEvaluationExperiments() throws IOException {
 		evaluateAccuracyForMovieDomain();
-//		evaluateAccuracyForFifaPlayersDomain();
+		evaluateAccuracyForFifaPlayersDomain();
 	}
 
 	private static void evaluateAccuracyForMovieDomain() throws IOException {
@@ -221,7 +209,6 @@ public class DomainSimilarity {
 		System.out.println("Recall: "+resultValidationMovieDomain.getRecall());
 		System.out.println("Lowest domain similarity score: "+resultValidationMovieDomain.getLowestDomainSimilarityScore());
 		System.out.println("Highest non-domain similarity score: "+resultValidationMovieDomain.getHighestNonDomainSimilarityScore());
-		System.out.println("Domain scores exceed non-domain scores: "+resultValidationMovieDomain.isDomainScoresExceedNonDomain());
 		System.out.println("Domain range size: "+resultValidationMovieDomain.getDomainRangeSize());
 		System.out.println("Non-domain range size: "+resultValidationMovieDomain.getNonDomainRangeSize());
 		System.out.println("");
@@ -286,13 +273,14 @@ public class DomainSimilarity {
 		int falseNegatives = 0;
 		double highestDomainScore = -1;
 		double lowestDomainScore = Double.MAX_VALUE;
-		double highestNonDomainScore = Double.MAX_VALUE;
-		double lowestNonDomainScore = -1;
+		double highestNonDomainScore = -1;
+		double lowestNonDomainScore = Double.MAX_VALUE;
 		for(DatasetSimilarity dataset : similarityScores) {
 			String datasetName = dataset.getDatasetName();
 			double datasetSimilarityScore = dataset.getSimilarityScore();
 			boolean isSimilarTruth = domainTruth.get(datasetName);
-			if(isSimilarTruth) {
+			boolean isSimilar = similarDatasets.contains(datasetName);
+			if(isSimilar) {
 				if(datasetSimilarityScore > highestDomainScore) {
 					highestDomainScore = datasetSimilarityScore;
 				}
@@ -309,7 +297,6 @@ public class DomainSimilarity {
 				}
 			}
 
-			boolean isSimilar = similarDatasets.contains(datasetName);
 			if(isSimilarTruth && isSimilar) {
 				truePositives++;
 			}
@@ -340,7 +327,7 @@ public class DomainSimilarity {
 
 	private static Path generateColumnDomains(Path domainRepresentativeDatasetPath, Path outputPath, String simAlgo, String robustifier, String trimmer, boolean noExpand) throws IOException {
 		ZonedDateTime start = ZonedDateTime.now();
-		ensureOutputPathExists(outputPath);
+		ensureOutputDirExists(outputPath);
 		Path columnsPath = generateColumnFiles(domainRepresentativeDatasetPath, outputPath);
 		Path termIndexPath = generateTermIndex(columnsPath);
 		Path eqsPath = generateEquivalenceClasses(termIndexPath);
@@ -365,7 +352,7 @@ public class DomainSimilarity {
 		}
 		Path datasetDomainPath = columnDomainsPath.getParent().resolve(DATASET_DOMAIN_DIR_NAME);
 		if(!outputExists(datasetDomainPath)) {
-			ensureOutputPathExists(datasetDomainPath);
+			ensureOutputDirExists(datasetDomainPath);
 			ZonedDateTime start = ZonedDateTime.now();
 			Files.list(columnDomainsPath).forEach(columnDomainPath -> writeColumnDomainTermsUsedInDatasetDomain(columnDomainPath, datasetDomainPath, allTerms));
 			logDuration(start, "generating dataset domain", columnDomainsPath.getParent().getParent());
@@ -466,7 +453,7 @@ public class DomainSimilarity {
 	private static Path generateTargetDatasetTermIndex(Path inputDataset, Path outputDirPath) throws IOException {
 		ZonedDateTime start = ZonedDateTime.now();
 		Path outputPath = convertDatasetInputPathToOutputPath(inputDataset, outputDirPath);
-		ensureOutputPathExists(outputPath);
+		ensureOutputDirExists(outputPath);
 		Path columnsPath = generateColumnFiles(inputDataset, outputPath);
 		Path termIndexPath = generateTermIndex(columnsPath);
 		logDuration(start, "generating term index for " + inputDataset, outputDirPath);
@@ -478,7 +465,7 @@ public class DomainSimilarity {
 			throw new IllegalArgumentException(String.format("The input dataset %s does not exist.", termIndexPath.toString()));
 		}
 		Path outputPath = termIndexPath.getParent();
-		ensureOutputPathExists(outputPath);
+		ensureOutputDirExists(outputPath);
 		Path matchingResultPath = outputPath.resolve(String.format("matching_result_%s_%s.json", termIndexPath.getParent().getFileName().toString(), datasetDomainPath.getParent().getFileName().toString()));
 		if(outputExists(matchingResultPath)) {
 			try(Reader reader = Files.newBufferedReader(matchingResultPath)){
@@ -509,7 +496,7 @@ public class DomainSimilarity {
 			throw new IllegalArgumentException();
 		}
 		Path outputPath = termIndexPath.getParent();
-		ensureOutputPathExists(outputPath);
+		ensureOutputDirExists(outputPath);
 
 		List<ColumnDomain> datasetDomain = new ArrayList<>();
 		Files.list(domainRepresentationTermsPath).forEach(datasetDomainFile -> {
@@ -536,12 +523,11 @@ public class DomainSimilarity {
 
 		if(LOG_MATCHED_TERMS) {
 			Path matchedTermsPath = outputPath
-					.resolve("matched-terms")
-					.resolve(domainRepresentationTermsPath.getParent().toString()+".txt");
-			ensureOutputPathExists(matchedTermsPath);
-			for(String matchedTerm: datasetTerms) {
+					.resolve("matched-terms.txt");
+			for(String matchedTerm: matchedDatasetTerms) {
 				Files.writeString(matchedTermsPath, matchedTerm+"\n", createAndAppend);
 			}
+			Files.writeString(matchedTermsPath, "\n", createAndAppend);
 		}
 		return new MatchingResult(matchedDatasetTerms.size(), datasetDomainTerms.size(), datasetTerms.size());
 	}
@@ -703,8 +689,8 @@ public class DomainSimilarity {
 		return datasetTerms;
 	}
 
-	private static void ensureOutputPathExists(Path outputPath) {
-		File outputFile = outputPath.toFile();
+	private static void ensureOutputDirExists(Path outputDirPath) {
+		File outputFile = outputDirPath.toFile();
 		if(!outputFile.exists()) {
 			outputFile.mkdirs();
 		}

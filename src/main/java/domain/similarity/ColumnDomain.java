@@ -5,6 +5,7 @@ import java.util.List;
 public class ColumnDomain {
 	private List<ExportedColumn> columns;
 	private List<String> terms;
+	private long termCount;
 
 	public List<ExportedColumn> getColumns() {
 		return columns;
@@ -17,5 +18,10 @@ public class ColumnDomain {
 	}
 	public void setTerms(List<String> terms) {
 		this.terms = terms;
+		this.termCount = terms.size();
+	}
+	public long getTermCount() {
+		return termCount;
+
 	}
 }
