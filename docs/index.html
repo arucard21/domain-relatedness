@@ -1,9 +1,179 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title>Domain Similarity</title>
+	<title>Domain-focused dataset discovery for tabular datasets, using easily-available information about the domain</title>
+	<style>
+	td,th {
+		padding-left: 1rem;
+	}
+	td.domain {
+		text-align: center;
+	}
+	</style>
 </head>
 <body>
-	These datasets were used to evaluate this research.
+	<p>These datasets were used in the evalation of the techniques in the thesis: 
+		<em>"Domain-focused dataset discovery for tabular datasets, using easily-available information about the domain"</em>.
+	</p>
+	<table>
+	<thead>
+		<tr>
+			<th scope="row">Dataset Name</th>
+			<th class="domain" scope="col">Movie domain</th>
+			<th class="domain" scope="col">FIFA players</th>
+			<th scope="col">Source</th>
+			<th scope="col">Notes</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td>IMDb</td>
+			<td class="domain">yes</td>
+			<td class="domain">no</td>
+			<td><a href="https://www.imdb.com/interfaces/">IMDb</a></td>
+			<td></td>
+		</tr>
+		<tr>
+			<td>MovieDB</td>
+			<td class="domain">yes</td>
+			<td class="domain">no</td>
+			<td><a href="https://www.kaggle.com/datasets/edgartanaka1/tmdb-movies-and-series">Kaggle</a></td>
+			<td>Converted from JSON according to the instructions provided <a href="https://github.com/arucard21/domain-similarity/tree/master/Convert%20TMDB">here</a>.</td>
+		</tr>
+		<tr>
+			<td>Indian Movies</td>
+			<td class="domain">yes</td>
+			<td class="domain">no</td>
+			<td><a href="https://www.kaggle.com/datasets/nareshbhat/indian-moviesimdb">Kaggle</a></td>
+			<td></td>
+		</tr>
+		<tr>
+			<td>Movies Dataset</td>
+			<td class="domain">yes</td>
+			<td class="domain">no</td>
+			<td><a href="https://www.kaggle.com/datasets/rounakbanik/the-movies-dataset">Kaggle</a></td>
+			<td></td>
+		</tr>
+		<tr>
+			<td>Netflix</td>
+			<td class="domain">yes</td>
+			<td class="domain">no</td>
+			<td><a href="https://www.kaggle.com/datasets/shivamb/netflix-shows">Kaggle</a></td>
+			<td></td>
+		</tr>
+		<tr>
+			<td>TMDB 350K+ Movies</td>
+			<td class="domain">yes</td>
+			<td class="domain">no</td>
+			<td><a href="https://www.kaggle.com/datasets/stephanerappeneau/350-000-movies-from-themoviedborg">Kaggle</a></td>
+			<td></td>
+		</tr>
+		<tr>
+			<td>Education</td>
+			<td class="domain">no</td>
+			<td class="domain">no</td>
+			<td><a href="https://doi.org/10.5281/zenodo.3647642">Ota et al</a></td>
+			<td>Used in evalution of D4 research by Ota et al.</td>
+		</tr>
+		<tr>
+			<td>Finance</td>
+			<td class="domain">no</td>
+			<td class="domain">no</td>
+			<td><a href="https://doi.org/10.5281/zenodo.3647647">Ota et al.</a></td>
+			<td>Used in evalution of D4 research by Ota et al.</td>
+		</tr>
+		<tr>
+			<td>Services</td>
+			<td class="domain">no</td>
+			<td class="domain">no</td>
+			<td><a href="https://doi.org/10.5281/zenodo.3647651">Ota et al.</a></td>
+			<td>Used in evalution of D4 research by Ota et al.</td>
+		</tr>
+		<tr>
+			<td>Steam</td>
+			<td class="domain">no</td>
+			<td class="domain">no</td>
+			<td><a href="https://www.kaggle.com/datasets/vicentearce/steamdata">Kaggle</a></td>
+			<td></td>
+		</tr>
+		<tr>
+			<td>Rotten Tomatoes</td>
+			<td class="domain">no</td>
+			<td class="domain">no</td>
+			<td><a href="https://www.kaggle.com/datasets/stefanoleone992/rotten-tomatoes-movies-and-critic-reviews-dataset">Kaggle</a></td>
+			<td></td>
+		</tr>
+		<tr>
+			<td>FIFA 22 players</td>
+			<td class="domain">no</td>
+			<td class="domain">yes</td>
+			<td><a href="https://www.kaggle.com/datasets/stefanoleone992/fifa-22-complete-player-dataset">Kaggle</a></td>
+			<td></td>
+		</tr>
+		<tr>
+			<td>FIFA Players &amp; stats</td>
+			<td class="domain">no</td>
+			<td class="domain">yes</td>
+			<td><a href="https://www.kaggle.com/datasets/justdhia/fifa-players">Kaggle</a></td>
+			<td></td>
+		</tr>
+		<tr>
+			<td>Fifa Players Ratings</td>
+			<td class="domain">no</td>
+			<td class="domain">yes</td>
+			<td><a href="https://www.kaggle.com/datasets/rishidamarla/fifa-players-ratings">Kaggle</a></td>
+			<td></td>
+		</tr>
+		<tr>
+			<td>FIFA23 official dataset</td>
+			<td class="domain">no</td>
+			<td class="domain">yes</td>
+			<td><a href="https://www.kaggle.com/datasets/bryanb/fifa-player-stats-database">Kaggle</a></td>
+			<td></td>
+		</tr>
+		<tr>
+			<td>Football Events</td>
+			<td class="domain">no</td>
+			<td class="domain">yes</td>
+			<td><a href="https://www.kaggle.com/datasets/secareanualin/football-events">Kaggle</a></td>
+			<td></td>
+		</tr>
+		<tr>
+			<td>Energy consumption</td>
+			<td class="domain">no</td>
+			<td class="domain">no</td>
+			<td><a href="https://www.kaggle.com/datasets/lucabasa/dutch-energy">Kaggle</a></td>
+			<td></td>
+		</tr>
+		<tr>
+			<td>Basket Analysis</td>
+			<td class="domain">no</td>
+			<td class="domain">no</td>
+			<td><a href="https://www.kaggle.com/datasets/psparks/instacart-market-basket-analysis">Kaggle</a></td>
+			<td></td>
+		</tr>
+		<tr>
+			<td>NIPS Papers</td>
+			<td class="domain">no</td>
+			<td class="domain">no</td>
+			<td><a href="https://www.kaggle.com/datasets/benhamner/nips-papers">Kaggle</a></td>
+			<td></td>
+		</tr>
+		<tr>
+			<td>Uber Pickups NYC</td>
+			<td class="domain">no</td>
+			<td class="domain">no</td>
+			<td><a href="https://www.kaggle.com/datasets/fivethirtyeight/uber-pickups-in-new-york-city">Kaggle</a></td>
+			<td></td>
+		</tr>
+		<tr>
+			<td>US Baby Names</td>
+			<td class="domain">no</td>
+			<td class="domain">no</td>
+			<td><a href="https://www.kaggle.com/datasets/kaggle/us-baby-names">Kaggle</a></td>
+			<td></td>
+		</tr>
+	</tbody>
+</table>
 </body>
 </html>
