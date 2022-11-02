@@ -160,7 +160,6 @@ public class DomainSimilarity {
 			INPUT_DIR.resolve("tmdb-350k"),
 			INPUT_DIR.resolve("rt")
 			);
-	private static double currentThreshold;
 
 	public static void main(String[] args) throws IOException {
 		runVariationsExperiments();
@@ -171,7 +170,7 @@ public class DomainSimilarity {
 	private static void runVariationsExperiments() throws IOException {
 		Path precisionDatasetDomainPath = generateDomainRepresentation(MOVIE_DOMAIN_INPUT_DATASETS_COMBINED, 	VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED, 	JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	false);
 		Path termFreqDatasetDomainPath = generateDomainRepresentation(MOVIE_DOMAIN_INPUT_DATASETS_COMBINED, 	VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_PRECISION_OPTIMIZED_TF, TERM_FREQUENCY_BASED_JACCARD, 	ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	false);
-		Path accuracyDatasetDomainPath = generateDomainRepresentation(MOVIE_DOMAIN_INPUT_DATASETS_COMBINED, 	VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_ACCURACY_OPTIMIZED, 	JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CENTRIST, 		false, 	true);
+		Path accuracyDatasetDomainPath = generateDomainRepresentation(MOVIE_DOMAIN_INPUT_DATASETS_COMBINED, 	VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_ACCURACY_OPTIMIZED, 	JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CENTRIST, 		false, 	false);
 		Path noExpandDatasetDomainPath = generateDomainRepresentation(MOVIE_DOMAIN_INPUT_DATASETS_COMBINED, 	VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_NO_EXPAND, 				JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	true, 	false);
 		Path allTermsDatasetDomainPath = generateDomainRepresentation(MOVIE_DOMAIN_INPUT_DATASETS_COMBINED, 	VARIATIONS_OUTPUT_DOMAIN_REPRESENTATION_ALL_TERMS, 				JACCARD_INDEX, 					ROBUSTIFIER_LIBERAL, 		TRIMMER_CONSERVATIVE, 	false, 	true);
     	for(Path inputDataset: VARIATIONS_INPUT_DATASETS) {
@@ -226,31 +225,7 @@ public class DomainSimilarity {
     	}
 		List<DatasetSimilarity> allSimilarityScores = combineDatasetSimilarityScoresInCsvFile(datasetSimilarityScorePaths, outputPath);
     	ResultValidation resultValidationOriginalOrder = evaluateSimilarityScores(domainTruth, allSimilarityScores, outputPath);
-    	evaluateAllSubsets(domainTruth, allSimilarityScores, outputPath);
     	return resultValidationOriginalOrder;
-	}
-
-	private static void evaluateAllSubsets(Map<String, Boolean> domainTruth, List<DatasetSimilarity> allSimilarityScores, Path outputPath) throws IOException {
-		Path resultPath = outputPath.resolve(DATASET_RESULT_VALIDATION_ALL_SUBSETS_FILE_NAME);
-		if(resultPath.toFile().exists()) {
-			return;
-		}
-		else {
-			String csvheader = "dataset_amount,accuracy,precision,recall,negative_precision,negative_recall,threshold\n";
-			Files.writeString(resultPath, csvheader, createAndAppend);
-		}
-		for(int i = 1; i <= allSimilarityScores.size(); i++) {
-			ResultValidation resultValidation = evaluateSimilarityScores(domainTruth, allSimilarityScores.subList(0, i), null);
-			String csvEntry = String.format("%d,%f,%f,%f,%f,%f,%f\n",
-					i,
-					resultValidation.getAccuracy(),
-					resultValidation.getPrecision(),
-					resultValidation.getRecall(),
-					resultValidation.getNegPrecision(),
-					resultValidation.getNegRecall(),
-					currentThreshold);
-			Files.writeString(resultPath, csvEntry, createAndAppend);
-		}
 	}
 
 	private static ResultValidation evaluateSimilarityScores(Map<String, Boolean> domainTruth, List<DatasetSimilarity> allSimilarityScores, Path outputPath) throws IOException {
@@ -657,7 +632,6 @@ public class DomainSimilarity {
 		double secondHighestDrop = validDropsSortedDescending.get(1).getConsecutiveDrop();
 		double secondLowestDrop = validDropsSortedDescending.get(validDropsSortedDescending.size()-2).getConsecutiveDrop();
 		double dropThreshold = (secondHighestDrop + secondLowestDrop)/2d;
-		currentThreshold = dropThreshold;
 		for(DatasetSimilarity score : sortedByDescendingSimilarityScore) {
 			if(groupedByConsecutiveDrop.isEmpty() || score.getConsecutiveDrop() > dropThreshold) {
 				SimilarDatasetsGroup group = new SimilarDatasetsGroup(new ArrayList<>());
