@@ -41,11 +41,37 @@ Set<String> domainFocusedDatasets = datasetDiscoveryForDomain.discoverDatasetsFo
 List<DatasetSimilarity> datasetSimilarityScores = datasetDiscoveryForDomain.getDatasetSimilarityScores();
 ```
 ## Reproducing the evaluation
-In order to use the reproduce the evaluation, you need to download the input data and extract it to a directory named `input`.
-Each subdirectory should represent a dataset and contain gzipped TSV files.
-The evaluation can then be reproduced by running the main method in the `Experiments` class.
-Due the high memory requirements, you may need to configure the JVM with these arguments `-Xms2g -Xmx15g`.
+### Preparing input datasets
+In order to reproduce the evaluation, you need to download the input datasets.
+They should be extracted to a directory named `input` at the root of this repository.
+Each subdirectory in the `input` directory represents a dataset and should contain gzipped TSV files. 
 
+_Note that this includes a dataset for each domain included in the evaluation._
+_Each of them contains the data from all domain-representative datasets for their domain._
+_This is provided as convenience since those domain-representative datasets are also available separately._
+
+The input datasets are [attached to the release of this repository](https://github.com/arucard21/domain-similarity/releases/tag/1.0) as separate `.tar` files.
+They can be extracted with this command:
+```shell
+tar -xf filename.tar
+```
+More information about the source of each dataset is provided [here](https://arucard21.github.io/domain-similarity/).
+
+The `Services` dataset (`datasets.data-cityofnewyork-us.services`) had to be split up due to file size constraints.
+It can be combined again with this command:
+```shell
+cat datasets.data-cityofnewyork-us.services.tar0* > datasets.data-cityofnewyork-us.services.tar
+```
+Or you can extract it directly with this command:
+```shell
+cat datasets.data-cityofnewyork-us.services.tar0* | tar -xf -
+```
+### Running the evaluation
+With the input datasets available, the evaluation can be reproduced by running the main method in the `Experiments` class.
+Due the high memory requirements, you may need to configure the JVM with these arguments -Xms2g -Xmx15g.
+This may take several hours to complete.
+
+### Inspecting the results of the evaluation
 This should result in the following three output directories:
 * output-variations
 * output-evaluation-movie
@@ -57,7 +83,7 @@ This reads the necessary result files and provides an overview and several graph
 
 The `output-evaluation-movie` and `output-evaluation-fifa-players` directories contain the results for the two domains that were evaluated in the thesis. 
 The results can be inspected in three files that are provided in each directory.
-`datasets_focused_on_domain.csv` provides the names and corresponding similarity scores of the datasets that were considered to focus on the domain.
-`all_similarity_scores.csv` provides the names and corresponding similarity scores of all datasets that were provided as input.
-This file also includes some more information, like the size of the dataset, the number of dataset domain terms, and the number of matched terms.
-`result_validation.json` contains several statistics calculated during the evaluation, most notable the accuracy, precision, and recall of the technique.
+* `datasets_focused_on_domain.csv` provides the names and corresponding similarity scores of the datasets that were considered to focus on the domain.
+* `all_similarity_scores.csv` provides the names and corresponding similarity scores of all datasets that were provided as input.
+This file also includes the size of the dataset, the number of dataset domain terms, and the number of matched terms.
+* `result_validation.json` contains several statistics calculated during the evaluation, including the accuracy, precision, and recall for that domain.
