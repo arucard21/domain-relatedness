@@ -1,4 +1,4 @@
-package domain.similarity;
+package com.github.arucard21.dataset_domain_terms.objects;
 
 import java.util.List;
 

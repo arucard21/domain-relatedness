@@ -1,4 +1,4 @@
-package domain.similarity;
+package com.github.arucard21.dataset_discovery.objects;
 
 public class MatchingResult {
 	private long matched;

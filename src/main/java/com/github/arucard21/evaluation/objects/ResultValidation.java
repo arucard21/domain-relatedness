@@ -1,4 +1,4 @@
-package domain.similarity;
+package com.github.arucard21.evaluation.objects;
 
 public class ResultValidation {
 	private final int truePositives;
