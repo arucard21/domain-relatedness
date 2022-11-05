@@ -30,7 +30,7 @@ testing {
 
 application {
     // Define the main class for the application.
-    mainClass = 'domain.similarity.DomainSimilarity'
+    mainClass = 'com.github.arucard21.evaluation.Experiments'
 }
 
 tasks.withType(JavaExec) {
