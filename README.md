@@ -67,9 +67,24 @@ Or you can extract it directly with this command:
 cat datasets.data-cityofnewyork-us.services.tar0* | tar -xf -
 ```
 ### Running the evaluation
-With the input datasets available, the evaluation can be reproduced by running the main method in the `Experiments` class.
-Due the high memory requirements, you may need to configure the JVM with these arguments -Xms2g -Xmx15g.
-This may take several hours to complete.
+Before running the evaluation, you need to build the D4 code as this it is a dependency of this implementation.
+Go into the `domain-discovery-d4` subdirectory and build it using Maven with the following commands:
+```shell
+cd domain-discovery-d4
+mvn clean install
+```
+You can now go back to the root directory and reproduce the evaluation using Gradle with the following commands:
+```shell
+cd ..
+./gradlew run
+```
+Due the high memory requirements, Gradle configures the JVM with the arguments `-Xms2g -Xmx15g` to increase the allowed memory usage.
+This can be changed in `build.gradle`.
+
+The evaluation will now be run and may take several hours to complete.
+It is implemented such that if it stops partway through, the next time it will skip what it has already created intermediate outcomes for.
+So it will resume from where it stopped when you run it again.
+This may require removing the last intermediate outcome it was working on if this was only partially written to disk.
 
 ### Inspecting the results of the evaluation
 This should result in the following three output directories:
